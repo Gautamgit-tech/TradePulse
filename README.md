@@ -15,20 +15,20 @@ TradePulse is a demo trading platform built around real-time market streams, gua
 
 ```mermaid
 flowchart LR
-    SIM[MarketDataSimulator<br/>5 instruments · 500 ms] -->|ticks and OHLCV| TICKS[/STOMP /topic/ticks/{symbol}/]
-    SIM -->|top-five bids and asks| DEPTH[/STOMP /topic/depth/{symbol}/]
-    TICKS --> UI[Trading terminal<br/>Lightweight Charts]
+    SIM["MarketDataSimulator (500ms)"] -->|ticks & OHLCV| TICKS["STOMP: /topic/ticks/{symbol}"]
+    SIM -->|top-5 depth| DEPTH["STOMP: /topic/depth/{symbol}"]
+    TICKS --> UI["Trading Terminal (Lightweight Charts)"]
     DEPTH --> UI
-    UI -->|place / cancel| API[TradingController<br/>REST API]
-    API --> TRADING[TradingService]
-    TRADING -->|conditional balance update| WALLET[(MongoDB<br/>Wallets)]
-    TRADING -->|persist orders| ORDERS[(MongoDB<br/>Orders)]
-    SIM --> MATCH[OrderMatchingService<br/>tick-driven limit matching]
+    UI -->|place / cancel| API["TradingController (REST API)"]
+    API --> TRADING["TradingService"]
+    TRADING -->|balance lock/unlock| WALLET[("MongoDB: Wallets")]
+    TRADING -->|persist orders| ORDERS[("MongoDB: Orders")]
+    SIM --> MATCH["OrderMatchingService"]
     ORDERS --> MATCH
-    MATCH -->|settlement and order events| EVENTS[/STOMP /topic/orders/{userId}/]
-    MATCH --> HOLDING[HoldingService]
-    MATCH --> LEDGER[(MongoDB<br/>Ledger)]
-    HOLDING --> POSITIONS[(MongoDB<br/>Holdings)]
+    MATCH -->|fills / events| EVENTS["STOMP: /topic/orders/{userId}"]
+    MATCH --> HOLDING["HoldingService"]
+    MATCH --> LEDGER[("MongoDB: Ledger")]
+    HOLDING --> POSITIONS[("MongoDB: Holdings")]
     EVENTS --> UI
     UI -->|wallet, orders, holdings| API
 ```
