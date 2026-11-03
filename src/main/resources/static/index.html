@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0a0e17">
+    <title>TradePulse | Markets</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        :root {
+            color-scheme: dark;
+            --page: #0a0e17;
+            --surface: rgba(17, 24, 39, .92);
+            --surface-raised: #111827;
+            --surface-hover: #182234;
+            --line: rgba(255, 255, 255, .08);
+            --text: #edf2f7;
+            --muted: #8290a0;
+            --dim: #596777;
+            --green: #00c087;
+            --green-soft: #102b27;
+            --red: #ff6577;
+            --red-soft: #321d25;
+            --amber: #f0b858;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--page);
+            color: var(--text);
+        }
+
+        * { box-sizing: border-box; }
+        body { min-width: 360px; min-height: 100vh; margin: 0; background: radial-gradient(ellipse at 50% -30%, #172334 0, var(--page) 55%); }
+        button, input { font: inherit; }
+        button { color: inherit; }
+
+        .topbar {
+            position: sticky; z-index: 20; top: 0; display: flex; min-height: 68px;
+            align-items: center; gap: 26px; padding: 0 28px;
+            border-bottom: 1px solid var(--line); background: rgba(9, 13, 19, .96);
+            backdrop-filter: blur(18px);
+        }
+        .brand { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+        .brand-mark {
+            display: grid; width: 32px; height: 32px; place-items: center; border-radius: 9px;
+            background: linear-gradient(145deg, #00d69b, #00a879); color: #04221a; font-size: 17px; font-weight: 900;
+        }
+        .brand-name { font-size: 17px; font-weight: 760; letter-spacing: -.04em; }
+        .live-badge {
+            display: inline-flex; align-items: center; gap: 7px; color: #a4b3c2; font-size: 10px;
+            font-weight: 650; letter-spacing: .07em; text-transform: uppercase;
+        }
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(0, 192, 135, .6); animation: pulse 1.8s infinite; }
+        @keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(0, 192, 135, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 192, 135, 0); } }
+        .indices { display: flex; flex: 1; align-items: center; gap: 26px; min-width: 0; }
+        .index-item { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
+        .index-name { color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .04em; }
+        .index-value { color: #dce4ec; font-size: 11px; font-variant-numeric: tabular-nums; }
+        .index-change { color: var(--green); font-size: 10px; }
+        .index-aapl { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .index-aapl .index-value { font-weight: 650; }
+        .header-spacer { flex: 1; }
+        .wallet-chip {
+            display: flex; flex: 0 0 auto; flex-direction: column; gap: 3px; padding: 8px 12px;
+            border: 1px solid #263541; border-radius: 10px; background: #101923;
+        }
+        .wallet-label { color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+        .wallet-amount { color: #e7f2ef; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .profile { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border: 1px solid #334354; border-radius: 50%; background: #1a2734; color: #dce7f1; font-size: 11px; font-weight: 700; }
+
+        .app-shell { width: min(1640px, 100%); margin: 0 auto; padding: 22px 26px 34px; }
+        .market-layout { display: grid; grid-template-columns: minmax(205px, 21fr) minmax(420px, 55fr) minmax(280px, 24fr); gap: 14px; align-items: stretch; }
+        .panel { min-width: 0; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); box-shadow: 0 14px 40px rgba(0, 0, 0, .13); backdrop-filter: blur(14px); }
+        .panel-title { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: -.01em; }
+        .panel-subtitle { margin-top: 5px; color: var(--muted); font-size: 10px; }
+
+        .watchlist { padding: 16px 0 10px; }
+        .watchlist-head { display: flex; align-items: center; justify-content: space-between; padding: 0 15px 15px; }
+        .watchlist-count { color: var(--dim); font-size: 10px; }
+        .watch-row {
+            display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
+            gap: 8px; padding: 12px 15px; border: 0; border-left: 2px solid transparent;
+            background: transparent; text-align: left; cursor: pointer; transition: background .15s ease;
+        }
+        .watch-row:hover { background: var(--surface-hover); }
+        .watch-row.active { border-left-color: var(--green); background: #111d25; }
+        .watch-symbol { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
+        .watch-live { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+        .watch-company { overflow: hidden; margin-top: 4px; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+        .watch-quote { text-align: right; }
+        .watch-price { color: #dce5ed; font-size: 11px; font-variant-numeric: tabular-nums; }
+        .watch-change { margin-top: 4px; font-size: 9px; font-variant-numeric: tabular-nums; }
+        .positive { color: var(--green); }
+        .negative { color: var(--red); }
+        .watch-note { margin: 14px 15px 0; color: var(--dim); font-size: 9px; line-height: 1.5; }
+
+        .chart-panel { display: flex; min-height: 520px; flex-direction: column; overflow: hidden; }
+        .instrument-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 20px 20px 14px; }
+        .instrument-title { display: flex; align-items: center; gap: 9px; }
+        .instrument-symbol { font-size: 16px; font-weight: 760; letter-spacing: -.02em; }
+        .exchange-tag { padding: 3px 6px; border: 1px solid #283441; border-radius: 5px; color: var(--muted); font-size: 9px; }
+        .instrument-name { margin-top: 6px; color: var(--muted); font-size: 10px; }
+        .chart-hover-hud { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; color: #94a3b8; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 9px; font-variant-numeric: tabular-nums; }
+        .chart-hover-hud strong { color: #d3dde5; font-weight: 600; }
+        .market-price-wrap { text-align: right; }
+        .market-price { color: #eff8f5; font-size: 24px; font-weight: 720; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+        .market-change { margin-top: 5px; font-size: 10px; font-variant-numeric: tabular-nums; }
+        .market-summary { display: flex; flex-wrap: wrap; gap: 18px; padding: 0 20px 14px; }
+        .summary-item { color: var(--muted); font-size: 9px; }
+        .summary-item strong { margin-left: 5px; color: #c8d2dc; font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
+        .chart-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border-top: 1px solid #1b2530; border-bottom: 1px solid #1b2530; }
+        .chart-controls { display: flex; align-items: center; gap: 12px; }
+        .chart-label { color: var(--muted); font-size: 9px; }
+        .timeframes { display: flex; gap: 3px; }
+        .timeframe {
+            min-width: 31px; padding: 5px 7px; border: 0; border-radius: 5px;
+            background: transparent; color: var(--muted); font-size: 9px; cursor: pointer;
+        }
+        .timeframe.active, .timeframe:hover { background: #1b2932; color: #a5e8d0; }
+        .chart-type-toggle { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 7px; background: #0a1017; }
+        .chart-type-button { padding: 5px 8px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 9px; cursor: pointer; }
+        .chart-type-button.active { background: #1b2932; color: #e3edf3; }
+        #chart { width: 100%; height: 333px; }
+        .chart-legend { display: flex; align-items: center; gap: 7px; padding: 0 17px 13px; color: var(--dim); font-size: 9px; }
+        .legend-line { width: 12px; height: 2px; background: var(--green); box-shadow: 0 0 8px rgba(0, 192, 135, .6); }
+
+        .order-pad { padding: 17px; }
+        .right-column { display: flex; min-width: 0; flex-direction: column; gap: 14px; }
+        .depth-panel { padding: 15px; }
+        .depth-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+        .depth-title { margin: 0; font-size: 13px; font-weight: 700; }
+        .depth-symbol { color: var(--muted); font-size: 9px; font-variant-numeric: tabular-nums; }
+        .depth-ratio { margin-top: 14px; }
+        .depth-ratio-labels { display: flex; justify-content: space-between; margin-bottom: 7px; color: var(--muted); font-size: 9px; }
+        .depth-ratio-labels strong { color: var(--text); font-variant-numeric: tabular-nums; }
+        .depth-ratio-track { display: flex; height: 7px; overflow: hidden; border-radius: 99px; background: var(--red); }
+        .depth-buy-share { width: 50%; background: var(--green); transition: width .2s ease; }
+        .depth-table-head, .depth-level, .depth-totals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .depth-table-head { margin-top: 14px; color: var(--dim); font-size: 8px; }
+        .depth-side-head { display: grid; grid-template-columns: minmax(24px, .55fr) minmax(24px, .55fr) minmax(60px, 1.3fr); padding: 0 4px 7px; }
+        .depth-side-head span:nth-child(2) { text-align: center; }
+        .depth-side-head span:last-child { text-align: right; }
+        .depth-side-head.bid { color: #59d9ae; }
+        .depth-side-head.ask { color: #ff8290; }
+        .depth-level { margin-top: 2px; }
+        .depth-rows { min-width: 0; }
+        .depth-row { position: relative; display: flex; height: 24px; align-items: center; justify-content: space-between; gap: 2px; overflow: hidden; padding: 0 3px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 8px; font-variant-numeric: tabular-nums; }
+        .depth-row > span { position: relative; z-index: 1; }
+        .depth-row > span:not(.depth-bar) { min-width: 0; flex: 1; overflow: hidden; white-space: nowrap; }
+        .depth-row > span:nth-child(3) { text-align: center; }
+        .depth-row > span:nth-child(4) { text-align: right; }
+        .depth-bar { position: absolute; top: 0; bottom: 0; width: 0; opacity: .14; transition: width .2s ease; }
+        .depth-rows.bids .depth-row { color: #6de0b7; }
+        .depth-rows.bids .depth-bar { right: 0; background: var(--green); }
+        .depth-rows.asks .depth-row { color: #ff9ba7; }
+        .depth-rows.asks .depth-bar { left: 0; background: var(--red); }
+        .depth-totals { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 9px; }
+        .depth-total { display: flex; justify-content: space-between; gap: 6px; }
+        .depth-total.bid { color: #6de0b7; }
+        .depth-total.ask { color: #ff9ba7; }
+        .depth-empty { padding: 13px 0 3px; color: var(--dim); text-align: center; font-size: 9px; }
+        .pad-top { display: flex; align-items: center; justify-content: space-between; }
+        .pad-title { margin: 0; font-size: 14px; font-weight: 720; }
+        .market-tag { color: var(--muted); font-size: 9px; }
+        .segmented { display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; gap: 4px; padding: 4px; border: 1px solid #202b36; border-radius: 9px; background: #0a1017; }
+        .side-toggle { margin-top: 17px; }
+        .segment-btn { min-height: 32px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 700; cursor: pointer; }
+        .segment-btn.selected.buy { background: var(--green-soft); color: #69e1b8; }
+        .segment-btn.selected.sell { background: var(--red-soft); color: #ff9aa7; }
+        .segment-btn.selected.neutral { background: #1b2932; color: #e3edf3; }
+        .product-tabs { display: flex; gap: 16px; margin: 16px 0 3px; }
+        .product-tab { padding: 0 0 7px; border: 0; border-bottom: 1px solid transparent; background: transparent; color: var(--muted); font-size: 10px; cursor: pointer; }
+        .product-tab.active { border-bottom-color: var(--green); color: #e5eee9; }
+        .product-note { margin-left: auto; color: var(--dim); font-size: 9px; }
+        .field-label { display: flex; justify-content: space-between; margin: 14px 0 7px; color: #a8b4c0; font-size: 10px; }
+        .field-hint { color: var(--dim); font-size: 9px; }
+        .field-wrap { position: relative; }
+        .field {
+            width: 100%; height: 39px; padding: 0 11px; border: 1px solid #2a3541; border-radius: 7px;
+            outline: 0; background: #0a1017; color: var(--text); font-size: 12px; font-variant-numeric: tabular-nums;
+        }
+        .field:focus { border-color: #178f72; box-shadow: 0 0 0 2px rgba(0, 192, 135, .1); }
+        .field:disabled { color: #91a0ad; background: #111820; }
+        .quick-qty { display: flex; gap: 6px; margin-top: 8px; }
+        .quick-chip { padding: 5px 9px; border: 1px solid #283440; border-radius: 6px; background: transparent; color: #b2beca; font-size: 9px; cursor: pointer; }
+        .quick-chip:hover { border-color: #487567; color: #8fe4c5; }
+        .order-value { display: flex; justify-content: space-between; gap: 8px; margin-top: 17px; padding: 12px 0; border-top: 1px solid #202a35; color: var(--muted); font-size: 10px; }
+        .order-value strong { color: #e8f0f3; font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
+        .available-line { display: flex; justify-content: space-between; color: var(--dim); font-size: 9px; }
+        .available-line strong { color: #aab8c3; font-weight: 550; }
+        .submit-order {
+            width: 100%; min-height: 43px; margin-top: 17px; border: 0; border-radius: 9px;
+            background: var(--green); color: #031c15; font-size: 11px; font-weight: 780; cursor: pointer;
+            transition: filter .15s ease, transform .15s ease;
+        }
+        .submit-order.sell { background: var(--red); color: #260a10; }
+        .submit-order:hover { filter: brightness(1.12); }
+        .submit-order:active { transform: scale(.99); }
+        .submit-order:disabled { cursor: wait; opacity: .55; }
+        .risk-note { margin-top: 12px; color: var(--dim); font-size: 9px; line-height: 1.55; }
+
+        .activity-panel { margin-top: 15px; overflow: hidden; }
+        .activity-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 18px; border-bottom: 1px solid var(--line); }
+        .activity-tabs { display: flex; gap: 21px; }
+        .activity-tab { position: relative; padding: 16px 0 14px; border: 0; background: transparent; color: var(--muted); font-size: 10px; font-weight: 600; cursor: pointer; }
+        .activity-tab.active { color: #e8f2f1; }
+        .activity-tab.active::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--green); content: ""; }
+        .activity-meta { color: var(--dim); font-size: 9px; }
+        .table-wrap { overflow-x: auto; }
+        .orders-table { width: 100%; min-width: 780px; border-collapse: collapse; text-align: left; }
+        .orders-table th { padding: 11px 16px; background: #0c121a; color: var(--dim); font-size: 8px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+        .orders-table td { padding: 12px 16px; border-top: 1px solid #1a242e; color: #cad4dd; font-size: 10px; font-variant-numeric: tabular-nums; }
+        .orders-table td:nth-child(n+2):nth-child(-n+6) { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+        .orders-table tbody tr:hover { background: #111923; }
+        .side-pill, .status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 99px; font-size: 8px; font-weight: 730; letter-spacing: .03em; }
+        .side-pill.buy { background: var(--green-soft); color: #6de0b7; }
+        .side-pill.sell { background: var(--red-soft); color: #ff9ba7; }
+        .status-pill.pending { background: #302719; color: #f0c46d; }
+        .status-pill.filled { background: var(--green-soft); color: #6de0b7; }
+        .status-pill.rejected { background: var(--red-soft); color: #ff9ba7; }
+        .status-pill.cancelled { background: #222b35; color: #aab8c5; }
+        .pnl-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid transparent; border-radius: 999px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 9px; white-space: nowrap; }
+        .pnl-badge.positive { border-color: rgba(0, 192, 135, .18); background: rgba(0, 192, 135, .1); color: #69dfb6; }
+        .pnl-badge.negative { border-color: rgba(255, 101, 119, .18); background: rgba(255, 101, 119, .1); color: #ff9aa7; }
+        .exit-button { padding: 6px 10px; border: 1px solid rgba(255, 101, 119, .28); border-radius: 7px; background: rgba(255, 101, 119, .08); color: #ff9aa7; font-size: 9px; font-weight: 700; cursor: pointer; }
+        .exit-button:hover { border-color: var(--red); background: rgba(255, 101, 119, .16); }
+        .exit-button:disabled { cursor: not-allowed; opacity: .4; }
+        .cancel-button { padding: 5px 9px; border: 1px solid rgba(255, 101, 119, .34); border-radius: 6px; background: transparent; color: #ff9aa7; font-size: 9px; font-weight: 650; cursor: pointer; }
+        .cancel-button:hover { border-color: #ff6577; background: rgba(255, 101, 119, .09); }
+        .cancel-button:disabled { cursor: wait; opacity: .5; }
+        .action-muted { color: var(--dim); }
+        .empty-cell { padding: 34px 16px !important; color: var(--muted) !important; text-align: center; }
+        .empty-icon { display: block; margin-bottom: 8px; color: #607181; font-size: 20px; }
+        .holdings-summary {
+            display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px;
+            margin: 14px 16px; overflow: hidden; border: 1px solid var(--line);
+            border-radius: 10px; background: var(--line);
+        }
+        .holdings-summary[hidden] { display: none; }
+        .holding-metric { min-width: 0; padding: 14px 16px; background: var(--surface-raised); }
+        .holding-metric-label { color: var(--muted); font-size: 9px; }
+        .holding-metric-value { margin-top: 7px; color: #e8f0f3; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .holding-metric-value.positive { color: var(--green); }
+        .holding-metric-value.negative { color: var(--red); }
+        .holding-metric-subvalue { margin-top: 4px; color: var(--muted); font-size: 9px; }
+        .pnl-flash { animation: pnlFlash .55s ease-out; }
+        @keyframes pnlFlash { 0% { background-color: rgba(0, 192, 135, .18); } 100% { background-color: transparent; } }
+        .toast {
+            position: fixed; z-index: 50; right: 22px; bottom: 22px; max-width: min(390px, calc(100vw - 32px));
+            padding: 12px 16px; transform: translateY(10px); opacity: 0; pointer-events: none;
+            border: 1px solid #26735e; border-radius: 9px; background: #112923; color: #b2f3d9;
+            box-shadow: 0 12px 35px #0008; font-size: 11px; transition: opacity .2s ease, transform .2s ease;
+        }
+        .toast.visible { transform: translateY(0); opacity: 1; }
+        .toast.error { border-color: #80414a; background: #2b1c22; color: #ffc2c8; }
+
+        @media (max-width: 1180px) {
+            .topbar { gap: 17px; padding: 0 18px; }
+            .indices { gap: 16px; }
+            .app-shell { padding-right: 18px; padding-left: 18px; }
+            .market-layout { grid-template-columns: minmax(185px, 21fr) minmax(370px, 54fr) minmax(260px, 25fr); gap: 10px; }
+            .order-pad { padding: 14px; }
+        }
+        @media (max-width: 960px) {
+            .topbar { flex-wrap: wrap; gap: 10px 18px; padding: 10px 16px; }
+            .indices { order: 3; flex-basis: 100%; overflow-x: auto; padding: 3px 0 2px; }
+            .header-spacer { display: none; }
+            .wallet-chip { margin-left: auto; }
+            .app-shell { padding: 14px; }
+            .market-layout { grid-template-columns: minmax(170px, .7fr) minmax(0, 2fr); }
+            .right-column { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+        }
+        @media (max-width: 620px) {
+            body { min-width: 360px; }
+            .topbar { min-height: 60px; padding: 9px 12px; }
+            .brand-name { font-size: 15px; }
+            .live-badge { font-size: 8px; }
+            .wallet-chip { padding: 6px 9px; }
+            .wallet-amount { font-size: 10px; }
+            .app-shell { padding: 10px; }
+            .market-layout { grid-template-columns: 1fr; }
+            .watchlist { order: 2; }
+            .chart-panel { order: 1; min-height: 0; }
+            .right-column { order: 3; grid-column: auto; grid-template-columns: 1fr; }
+            .watchlist-grid { display: grid; grid-template-columns: 1fr 1fr; }
+            .watchlist-head { padding-bottom: 9px; }
+            .watch-note { margin-top: 8px; }
+            .instrument-head { padding: 16px 14px 12px; }
+            .market-price { font-size: 20px; }
+            .market-summary { gap: 12px; padding: 0 14px 12px; }
+            #chart { height: 270px; }
+            .activity-top { align-items: flex-start; flex-direction: column; gap: 0; padding: 0 13px; }
+            .activity-tabs { width: 100%; justify-content: space-between; gap: 10px; }
+            .activity-meta { padding-bottom: 10px; }
+            .orders-table th, .orders-table td { padding-right: 11px; padding-left: 11px; }
+            .holdings-summary { grid-template-columns: 1fr; gap: 1px; }
+            .holding-metric { padding: 11px 13px; }
+        }
+    </style>
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" href="#" aria-label="TradePulse home">
+        <span class="brand-mark">T</span>
+        <span class="brand-name">TradePulse</span>
+        <span class="live-badge"><span id="marketLiveDot" class="live-dot"></span><span id="marketLiveText">Live market</span></span>
+    </a>
+
+    <div class="indices" aria-label="Market indices">
+        <div class="index-item">
+            <span class="index-name">NIFTY 50</span>
+            <span class="index-value">24,180.50</span>
+            <span class="index-change">+0.45%</span>
+        </div>
+        <div class="index-item">
+            <span class="index-name">SENSEX</span>
+            <span class="index-value">79,420.10</span>
+            <span class="index-change">+0.38%</span>
+        </div>
+        <div class="index-aapl">
+            <span class="index-name">AAPL</span>
+            <span id="headerAaplPrice" class="index-value">—</span>
+            <span id="headerAaplChange" class="index-change">Live</span>
+        </div>
+    </div>
+
+    <div class="header-spacer"></div>
+    <div class="wallet-chip" title="Available INR cash">
+        <span class="wallet-label">Available cash</span>
+        <span id="walletAvailable" class="wallet-amount">Loading…</span>
+    </div>
+    <div class="profile" title="Demo user">DU</div>
+</header>
+
+<main class="app-shell">
+    <section class="market-layout" aria-label="Trading terminal">
+        <aside class="panel watchlist">
+            <div class="watchlist-head">
+                <h2 class="panel-title">Watchlist</h2>
+                <span class="watchlist-count">5 instruments</span>
+            </div>
+            <div id="watchlistItems" class="watchlist-grid"></div>
+            <p class="watch-note">Live prices update across the watchlist. Orders are matched per instrument.</p>
+        </aside>
+
+        <section class="panel chart-panel" aria-label="Selected instrument chart">
+            <div class="instrument-head">
+                <div>
+                    <div class="instrument-title">
+                        <span id="instrumentSymbol" class="instrument-symbol">AAPL</span>
+                        <span id="instrumentExchange" class="exchange-tag">NASDAQ</span>
+                    </div>
+                    <div id="instrumentName" class="instrument-name">Apple Inc.</div>
+                    <div id="chartHoverHud" class="chart-hover-hud" aria-live="polite">
+                        <span>O: <strong>—</strong></span><span>H: <strong>—</strong></span>
+                        <span>L: <strong>—</strong></span><span>C: <strong>—</strong></span>
+                        <span>Vol: <strong>—</strong></span>
+                    </div>
+                </div>
+                <div class="market-price-wrap">
+                    <div id="marketPrice" class="market-price">Connecting…</div>
+                    <div id="marketChange" class="market-change positive">Waiting for market data</div>
+                </div>
+            </div>
+            <div class="market-summary">
+                <span class="summary-item">Day high<strong id="dayHigh">—</strong></span>
+                <span class="summary-item">Day low<strong id="dayLow">—</strong></span>
+                <span class="summary-item">Market<strong id="quoteSource">Live feed</strong></span>
+            </div>
+            <div class="chart-toolbar">
+                <span id="chartPeriodLabel" class="chart-label">AAPL · Intraday</span>
+                <div class="chart-controls">
+                    <div class="timeframes" aria-label="Chart timeframe">
+                        <button class="timeframe active" type="button" data-timeframe="1S">1S</button>
+                        <button class="timeframe" type="button" data-timeframe="5S">5S</button>
+                        <button class="timeframe" type="button" data-timeframe="1M">1M</button>
+                        <button class="timeframe" type="button" data-timeframe="1D">1D</button>
+                    </div>
+                    <div class="chart-type-toggle" role="group" aria-label="Chart type">
+                        <button id="lineChartButton" class="chart-type-button active" type="button" aria-pressed="true">Line</button>
+                        <button id="candleChartButton" class="chart-type-button" type="button" aria-pressed="false">Candles</button>
+                    </div>
+                </div>
+            </div>
+            <div id="chart"></div>
+            <div class="chart-legend"><span class="legend-line"></span><span>Price · INR</span><span>Volume</span></div>
+        </section>
+
+        <div class="right-column">
+        <aside class="panel order-pad">
+            <div class="pad-top">
+                <h2 class="pad-title">Place order</h2>
+                <span class="market-tag">NSE · DEMO</span>
+            </div>
+
+            <div class="segmented side-toggle" role="group" aria-label="Order side">
+                <button id="buyTab" class="segment-btn selected buy" type="button" data-side="BUY">BUY</button>
+                <button id="sellTab" class="segment-btn" type="button" data-side="SELL">SELL</button>
+            </div>
+
+            <div class="product-tabs" role="group" aria-label="Product type">
+                <button class="product-tab active" type="button" data-product="Delivery">Delivery</button>
+                <button class="product-tab" type="button" data-product="Intraday">Intraday</button>
+                <span id="productNote" class="product-note">CNC</span>
+            </div>
+
+            <div class="segmented" role="group" aria-label="Order type">
+                <button id="limitTab" class="segment-btn selected neutral" type="button" data-type="LIMIT">Limit</button>
+                <button id="marketTab" class="segment-btn" type="button" data-type="MARKET">Market</button>
+            </div>
+
+            <form id="orderForm">
+                <label class="field-label" for="orderPrice">
+                    <span>Price</span>
+                    <span id="priceHint" class="field-hint">INR per share</span>
+                </label>
+                <div class="field-wrap">
+                    <input id="orderPrice" class="field" type="number" min="0.01" step="0.01" required
+                           inputmode="decimal" placeholder="0.00">
+                </div>
+
+                <label class="field-label" for="orderQuantity">
+                    <span>Quantity</span>
+                    <span class="field-hint">Shares</span>
+                </label>
+                <input id="orderQuantity" class="field" type="number" min="1" step="1" required
+                       inputmode="numeric" placeholder="0">
+                <div class="quick-qty" aria-label="Quick quantity">
+                    <button class="quick-chip" type="button" data-add="1">+1</button>
+                    <button class="quick-chip" type="button" data-add="5">+5</button>
+                    <button class="quick-chip" type="button" data-add="10">+10</button>
+                    <button id="maxQuantity" class="quick-chip" type="button">Max</button>
+                </div>
+
+                <div class="order-value">
+                    <span id="valueLabel">Order value</span>
+                    <strong id="orderValue">₹0.00</strong>
+                </div>
+                <div class="available-line">
+                    <span>Available cash</span>
+                    <strong id="padAvailable">Loading…</strong>
+                </div>
+                <button id="submitOrder" class="submit-order" type="submit">Buy AAPL</button>
+            </form>
+            <p class="risk-note">Demo trading only. Open sell orders reserve shares until execution. Delivery / Intraday are display labels.</p>
+        </aside>
+        <aside class="panel depth-panel" aria-label="Market depth">
+            <div class="depth-heading">
+                <h2 class="depth-title">Market Depth <span class="depth-symbol">(L2)</span></h2>
+                <span id="depthSymbol" class="depth-symbol">AAPL</span>
+            </div>
+            <div class="depth-ratio">
+                <div class="depth-ratio-labels">
+                    <span>Buyers <strong id="depthBuyPercent">—</strong></span>
+                    <span>Sellers <strong id="depthSellPercent">—</strong></span>
+                </div>
+                <div class="depth-ratio-track" role="img" aria-label="Bid and ask quantity ratio">
+                    <span id="depthBuyShare" class="depth-buy-share"></span>
+                </div>
+            </div>
+            <div class="depth-table-head">
+                <div class="depth-side-head bid"><span>Orders</span><span>Qty</span><span>Bid Price</span></div>
+                <div class="depth-side-head ask"><span>Ask Price</span><span>Qty</span><span>Orders</span></div>
+            </div>
+            <div class="depth-level">
+                <div id="depthBidRows" class="depth-rows bids"></div>
+                <div id="depthAskRows" class="depth-rows asks"></div>
+            </div>
+            <div id="depthEmpty" class="depth-empty">Waiting for live market depth…</div>
+            <div id="depthTotals" class="depth-totals" hidden>
+                <div class="depth-total bid"><span>Buy</span><strong id="depthBuyTotal">—</strong></div>
+                <div class="depth-total ask"><span>Sell</span><strong id="depthSellTotal">—</strong></div>
+            </div>
+        </aside>
+        </div>
+    </section>
+
+    <section class="panel activity-panel" aria-label="Orders and holdings">
+        <div class="activity-top">
+            <div class="activity-tabs" role="tablist" aria-label="Order activity">
+                <button class="activity-tab active" type="button" role="tab" aria-selected="true" data-view="open">Open Orders</button>
+                <button class="activity-tab" type="button" role="tab" aria-selected="false" data-view="history">Order History</button>
+                <button class="activity-tab" type="button" role="tab" aria-selected="false" data-view="holdings">Holdings</button>
+            </div>
+            <span id="activityMeta" class="activity-meta">Recent orders · Refreshes live</span>
+        </div>
+        <div id="holdingsSummary" class="holdings-summary" hidden>
+            <div class="holding-metric">
+                <div class="holding-metric-label">Total invested</div>
+                <div id="totalInvested" class="holding-metric-value">₹0.00</div>
+            </div>
+            <div class="holding-metric">
+                <div class="holding-metric-label">Current portfolio value</div>
+                <div id="portfolioValue" class="holding-metric-value">₹0.00</div>
+            </div>
+            <div class="holding-metric">
+                <div class="holding-metric-label">Total P&amp;L</div>
+                <div id="portfolioPnl" class="holding-metric-value">₹0.00</div>
+                <div id="portfolioPnlPercent" class="holding-metric-subvalue">0.00%</div>
+            </div>
+            <div class="holding-metric">
+                <div class="holding-metric-label">Day P&amp;L</div>
+                <div id="dayPnl" class="holding-metric-value">₹0.00</div>
+                <div class="holding-metric-subvalue">Unrealized today</div>
+            </div>
+        </div>
+        <div class="table-wrap">
+            <table class="orders-table">
+                <thead>
+                <tr id="activityHeader"></tr>
+                </thead>
+                <tbody id="ordersBody">
+                <tr><td class="empty-cell" colspan="8">Loading order history…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+    (() => {
+        'use strict';
+
+        const USER_ID = 'demo-user';
+        const instruments = {
+            AAPL: { name: 'Apple Inc.', exchange: 'NASDAQ', price: 2475, reference: 2475, change: 0, live: true },
+            NVDA: { name: 'NVIDIA Corporation', exchange: 'NASDAQ', price: 1180, reference: 1180, change: 0, live: true },
+            MSFT: { name: 'Microsoft Corporation', exchange: 'NASDAQ', price: 820, reference: 820, change: 0, live: true },
+            RELIANCE: { name: 'Reliance Industries', exchange: 'NSE', price: 1460, reference: 1460, change: 0, live: true },
+            INFY: { name: 'Infosys Limited', exchange: 'NSE', price: 1580, reference: 1580, change: 0, live: true }
+        };
+        const currencyFormat = new Intl.NumberFormat('en-IN', {
+            style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2
+        });
+        const numberFormat = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 4 });
+
+        let selectedSymbol = 'AAPL';
+        let orderSide = 'BUY';
+        let orderType = 'LIMIT';
+        let currentProduct = 'Delivery';
+        let activeView = 'open';
+        let availableBalance = 0;
+        let lockedBalance = 0;
+        let stompClient;
+        let activeTickSubscription;
+        let activeDepthSubscription;
+        let orderTopicSubscription;
+        const watchlistTickSubscriptions = new Map();
+        const depthRows = { bids: [], asks: [] };
+        let toastTimeout;
+        let tickCount = 0;
+        let dayHigh = 0;
+        let dayLow = Number.POSITIVE_INFINITY;
+        let lastOrders = [];
+        let holdings = [];
+
+        const el = id => document.getElementById(id);
+        function initializeDepthRows() {
+            [['bids', el('depthBidRows')], ['asks', el('depthAskRows')]].forEach(([side, container]) => {
+                for (let index = 0; index < 5; index++) {
+                    const row = document.createElement('div');
+                    row.className = 'depth-row';
+                    const bar = document.createElement('span');
+                    bar.className = 'depth-bar';
+                    const values = [document.createElement('span'), document.createElement('span'),
+                        document.createElement('span')];
+                    row.append(bar, ...values);
+                    container.append(row);
+                    depthRows[side].push({ bar, values });
+                }
+            });
+        }
+
+        function renderDepth(depth) {
+            el('depthSymbol').textContent = selectedSymbol;
+            if (!depth) {
+                el('depthBuyPercent').textContent = '—';
+                el('depthSellPercent').textContent = '—';
+                el('depthBuyShare').style.width = '50%';
+                el('depthEmpty').hidden = false;
+                el('depthTotals').hidden = true;
+                depthRows.bids.concat(depthRows.asks).forEach(row => {
+                    row.values.forEach(value => { value.textContent = '—'; });
+                    row.bar.style.width = '0%';
+                });
+                return;
+            }
+
+            const buyPercent = Number(depth.buyPercentage);
+            const sellPercent = Number(depth.sellPercentage);
+            const bids = depth.bids;
+            const asks = depth.asks;
+            if (!Number.isFinite(buyPercent) || !Number.isFinite(sellPercent)
+                || !Array.isArray(bids) || bids.length !== 5 || !Array.isArray(asks) || asks.length !== 5) {
+                throw new Error('Invalid market depth payload for ' + selectedSymbol);
+            }
+            const levels = bids.concat(asks);
+            const quantities = levels.map(level => Number(level.quantity));
+            const totals = [Number(depth.totalBuyQuantity), Number(depth.totalSellQuantity)];
+            if (!levels.every(level => level && Number.isFinite(Number(level.price))
+                    && Number.isFinite(Number(level.orders)) && Number(level.orders) >= 0)
+                || !quantities.every(quantity => Number.isFinite(quantity) && quantity > 0)
+                || !totals.every(Number.isFinite)) {
+                throw new Error('Invalid market depth values for ' + selectedSymbol);
+            }
+            const maxQuantity = Math.max(1, ...quantities);
+            [[bids, depthRows.bids, true], [asks, depthRows.asks, false]].forEach(([levels, rows, isBid]) => {
+                levels.forEach((level, index) => {
+                    const quantity = Number(level.quantity);
+                    const price = Number(level.price);
+                    const orders = Number(level.orders);
+                    const values = isBid
+                        ? [numberFormat.format(orders), numberFormat.format(quantity), currencyFormat.format(price)]
+                        : [currencyFormat.format(price), numberFormat.format(quantity), numberFormat.format(orders)];
+                    rows[index].values.forEach((node, valueIndex) => { node.textContent = values[valueIndex]; });
+                    rows[index].bar.style.width = Math.min(100, quantity / maxQuantity * 100) + '%';
+                });
+            });
+            el('depthBuyPercent').textContent = buyPercent + '%';
+            el('depthSellPercent').textContent = sellPercent + '%';
+            el('depthBuyShare').style.width = Math.max(0, Math.min(100, buyPercent)) + '%';
+            el('depthBuyTotal').textContent = numberFormat.format(Number(depth.totalBuyQuantity));
+            el('depthSellTotal').textContent = numberFormat.format(Number(depth.totalSellQuantity));
+            el('depthEmpty').hidden = true;
+            el('depthTotals').hidden = false;
+        }
+
+        const chartElement = el('chart');
+        const chart = LightweightCharts.createChart(chartElement, {
+            width: chartElement.clientWidth,
+            height: chartElement.clientHeight,
+            layout: { background: { color: '#0c0f17' }, textColor: '#7f8d9c', fontFamily: 'Inter, sans-serif' },
+            grid: { vertLines: { color: '#171f29' }, horzLines: { color: '#171f29' } },
+            rightPriceScale: { borderColor: '#202a36', scaleMargins: { top: .12, bottom: .1 } },
+            timeScale: { timeVisible: true, secondsVisible: true, borderColor: '#202a36', rightOffset: 3 },
+            crosshair: {
+                vertLine: { color: '#64748b', style: 1, labelBackgroundColor: '#263541' },
+                horzLine: { color: '#64748b', style: 1, labelBackgroundColor: '#263541' }
+            }
+        });
+        const lineSeries = chart.addAreaSeries({
+            lineColor: '#00c087',
+            lineWidth: 2,
+            topColor: 'rgba(0, 192, 135, .24)',
+            bottomColor: 'rgba(0, 192, 135, .015)',
+            priceLineColor: '#00c087',
+            priceLineWidth: 1,
+            visible: true
+        });
+        const candleSeries = chart.addCandlestickSeries({
+            upColor: '#10b981',
+            downColor: '#ef4444',
+            borderUpColor: '#10b981',
+            borderDownColor: '#ef4444',
+            wickUpColor: '#10b981',
+            wickDownColor: '#ef4444',
+            visible: false
+        });
+        const volumeSeries = chart.addHistogramSeries({
+            priceFormat: { type: 'volume' },
+            priceScaleId: '',
+            lastValueVisible: false,
+            priceLineVisible: false
+        });
+        const candleDataByTime = new Map();
+        const volumeDataByTime = new Map();
+        chart.priceScale('').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+
+        chart.subscribeCrosshairMove(param => {
+            const hud = el('chartHoverHud');
+            if (!param || param.time == null || !param.seriesData) {
+                hud.innerHTML = '<span>O: <strong>—</strong></span><span>H: <strong>—</strong></span>'
+                    + '<span>L: <strong>—</strong></span><span>C: <strong>—</strong></span>'
+                    + '<span>Vol: <strong>—</strong></span>';
+                return;
+            }
+            const time = Number(param.time);
+            const candle = candleDataByTime.get(time) || {};
+            const line = param.seriesData.get(lineSeries);
+            const close = Number.isFinite(candle.close) ? candle.close
+                : line && Number.isFinite(line.value) ? line.value : null;
+            const values = {
+                open: Number.isFinite(candle.open) ? candle.open : close,
+                high: Number.isFinite(candle.high) ? candle.high : close,
+                low: Number.isFinite(candle.low) ? candle.low : close,
+                close,
+                volume: volumeDataByTime.get(time)
+            };
+            const formatted = value => Number.isFinite(value) ? currencyFormat.format(value) : '—';
+            const volumeText = Number.isFinite(values.volume) ? numberFormat.format(values.volume) : '—';
+            hud.innerHTML = '<span>O: <strong>' + formatted(values.open) + '</strong></span>'
+                + '<span>H: <strong>' + formatted(values.high) + '</strong></span>'
+                + '<span>L: <strong>' + formatted(values.low) + '</strong></span>'
+                + '<span>C: <strong>' + formatted(values.close) + '</strong></span>'
+                + '<span>Vol: <strong>' + volumeText + '</strong></span>';
+        });
+
+        new ResizeObserver(entries => {
+            const size = entries[0].contentRect;
+            chart.resize(Math.max(1, Math.floor(size.width)), Math.max(1, Math.floor(size.height)));
+        }).observe(chartElement);
+
+        function escapeText(value) {
+            return String(value == null ? '' : value);
+        }
+
+        function renderWatchlist() {
+            const container = el('watchlistItems');
+            container.replaceChildren();
+            Object.entries(instruments).forEach(([symbol, instrument]) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'watch-row' + (symbol === selectedSymbol ? ' active' : '');
+                button.setAttribute('aria-pressed', String(symbol === selectedSymbol));
+                button.addEventListener('click', () => selectInstrument(symbol));
+
+                const details = document.createElement('span');
+                const title = document.createElement('span');
+                title.className = 'watch-symbol';
+                title.textContent = symbol;
+                if (instrument.live) {
+                    const dot = document.createElement('span');
+                    dot.className = 'watch-live';
+                    dot.title = 'Live feed';
+                    title.append(dot);
+                }
+                const company = document.createElement('span');
+                company.className = 'watch-company';
+                company.textContent = instrument.name;
+                details.append(title, company);
+
+                const quote = document.createElement('span');
+                quote.className = 'watch-quote';
+                const price = document.createElement('span');
+                price.className = 'watch-price';
+                price.textContent = currencyFormat.format(instrument.price);
+                const change = document.createElement('span');
+                change.className = 'watch-change ' + (instrument.change >= 0 ? 'positive' : 'negative');
+                change.textContent = (instrument.change >= 0 ? '+' : '') + instrument.change.toFixed(2) + '%';
+                quote.append(price, document.createElement('br'), change);
+                button.append(details, quote);
+                container.append(button);
+            });
+        }
+
+        function updateInstrumentHeader() {
+            const instrument = instruments[selectedSymbol];
+            el('instrumentSymbol').textContent = selectedSymbol;
+            el('instrumentName').textContent = instrument.name;
+            el('instrumentExchange').textContent = instrument.exchange;
+            el('quoteSource').textContent = instrument.live ? 'Live feed' : 'Simulated';
+            el('marketPrice').textContent = currencyFormat.format(instrument.price);
+            const changeValue = instrument.price * instrument.change / 100;
+            el('marketChange').textContent = (changeValue >= 0 ? '+' : '')
+                + currencyFormat.format(changeValue) + ' (' + (instrument.change >= 0 ? '+' : '')
+                + instrument.change.toFixed(2) + '%) today';
+            el('marketChange').className = 'market-change ' + (instrument.change >= 0 ? 'positive' : 'negative');
+            el('dayHigh').textContent = currencyFormat.format(dayHigh || instrument.price);
+            el('dayLow').textContent = currencyFormat.format(Number.isFinite(dayLow) ? dayLow : instrument.price);
+            el('chartPeriodLabel').textContent = selectedSymbol + ' · Intraday';
+            if (orderType === 'MARKET') {
+                el('orderPrice').value = instrument.price.toFixed(2);
+            }
+            updateOrderValue();
+            updateSubmitButton();
+        }
+
+        function selectInstrument(symbol) {
+            if (!instruments[symbol]) return;
+            selectedSymbol = symbol;
+            tickCount = 0;
+            dayHigh = 0;
+            dayLow = Number.POSITIVE_INFINITY;
+            renderDepth(null);
+            renderWatchlist();
+            updateInstrumentHeader();
+            el('orderPrice').value = instruments[symbol].price.toFixed(2);
+            updateOrderValue();
+            seedChart(instruments[symbol].price);
+            syncTickSubscriptions();
+        }
+
+        function seedChart(price) {
+            const bucketSeconds = 5;
+            const currentBucket = Math.floor(Date.now() / 1000 / bucketSeconds) * bucketSeconds;
+            const candles = [];
+            const line = [];
+            const volumes = [];
+            candleDataByTime.clear();
+            volumeDataByTime.clear();
+            let previousClose = price * .997;
+            for (let index = 44; index >= 0; index--) {
+                const open = previousClose;
+                const close = Math.max(.01, open + (Math.random() - .48) * price * .00045);
+                const high = Math.max(open, close) + Math.random() * price * .00012;
+                const low = Math.max(.01, Math.min(open, close) - Math.random() * price * .00012);
+                const time = currentBucket - (index + 1) * bucketSeconds;
+                const candle = {
+                    time,
+                    open: Number(open.toFixed(2)),
+                    high: Number(high.toFixed(2)),
+                    low: Number(low.toFixed(2)),
+                    close: Number(close.toFixed(2))
+                };
+                const isUp = candle.close >= candle.open;
+                candles.push(candle);
+                candleDataByTime.set(time, candle);
+                line.push({ time, value: candle.close });
+                const volume = Math.round(500 + Math.random() * 3500);
+                volumeDataByTime.set(time, volume);
+                volumes.push({
+                    time,
+                    value: volume,
+                    color: isUp ? 'rgba(16, 185, 129, .58)' : 'rgba(239, 68, 68, .58)'
+                });
+                previousClose = close;
+            }
+            lineSeries.setData(line);
+            candleSeries.setData(candles);
+            volumeSeries.setData(volumes);
+            chart.timeScale().fitContent();
+        }
+
+        function updateQuote(symbol, tick) {
+            const instrument = instruments[symbol];
+            const price = Number(tick.price);
+            if (!instrument || !Number.isFinite(price) || price <= 0) return;
+            const previousPrice = instrument.price;
+            instrument.price = price;
+            instrument.change = ((price - instrument.reference) / instrument.reference) * 100;
+            if (symbol === selectedSymbol) {
+                tickCount++;
+                dayHigh = Math.max(dayHigh || price, price);
+                dayLow = Math.min(dayLow, price);
+                updateInstrumentHeader();
+                const barTime = Number.isFinite(Number(tick.barTime))
+                    ? Number(tick.barTime)
+                    : Math.floor(Date.now() / 5000) * 5;
+                const open = Number.isFinite(Number(tick.open)) ? Number(tick.open) : price;
+                const high = Number.isFinite(Number(tick.high)) ? Number(tick.high) : price;
+                const low = Number.isFinite(Number(tick.low)) ? Number(tick.low) : price;
+                const close = Number.isFinite(Number(tick.close)) ? Number(tick.close) : price;
+                const volume = Number.isFinite(Number(tick.volume))
+                    ? Number(tick.volume)
+                    : Number(tick.tickVolume || 0);
+                const candle = { time: barTime, open, high, low, close };
+                candleDataByTime.set(barTime, candle);
+                volumeDataByTime.set(barTime, volume);
+                lineSeries.update({ time: barTime, value: close });
+                candleSeries.update(candle);
+                volumeSeries.update({
+                    time: barTime,
+                    value: volume,
+                    color: close >= open ? 'rgba(16, 185, 129, .58)' : 'rgba(239, 68, 68, .58)'
+                });
+            }
+            if (symbol === 'AAPL') {
+                el('headerAaplPrice').textContent = currencyFormat.format(price);
+                const change = instrument.change;
+                el('headerAaplChange').textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+                el('headerAaplChange').className = 'index-change ' + (change >= 0 ? 'positive' : 'negative');
+            }
+            if (symbol === selectedSymbol || previousPrice !== price) renderWatchlist();
+            if (activeView === 'holdings' && holdings.some(holding => holding.symbol === symbol)) {
+                renderHoldings(true);
+            }
+        }
+
+        function updateOrderValue() {
+            const price = Number(el('orderPrice').value);
+            const quantity = Number(el('orderQuantity').value);
+            const total = Number.isFinite(price) && Number.isFinite(quantity) ? price * quantity : 0;
+            el('orderValue').textContent = currencyFormat.format(total);
+            el('valueLabel').textContent = orderSide === 'BUY' ? 'Required margin' : 'Order value';
+        }
+
+        function updateSubmitButton() {
+            const button = el('submitOrder');
+            button.classList.toggle('sell', orderSide === 'SELL');
+            button.textContent = (orderSide === 'BUY' ? 'Buy ' : 'Sell ') + selectedSymbol;
+        }
+
+        function setOrderSide(side) {
+            orderSide = side;
+            el('buyTab').className = 'segment-btn' + (side === 'BUY' ? ' selected buy' : '');
+            el('sellTab').className = 'segment-btn' + (side === 'SELL' ? ' selected sell' : '');
+            updateOrderValue();
+            updateSubmitButton();
+        }
+
+        function setOrderType(type) {
+            orderType = type;
+            el('limitTab').className = 'segment-btn' + (type === 'LIMIT' ? ' selected neutral' : '');
+            el('marketTab').className = 'segment-btn' + (type === 'MARKET' ? ' selected neutral' : '');
+            el('orderPrice').disabled = type === 'MARKET';
+            el('priceHint').textContent = type === 'MARKET' ? 'Current market price' : 'INR per share';
+            if (type === 'MARKET') {
+                el('orderPrice').value = instruments[selectedSymbol].price.toFixed(2);
+            } else if (Number(el('orderPrice').value) === 0) {
+                el('orderPrice').value = instruments[selectedSymbol].price.toFixed(2);
+            }
+            updateOrderValue();
+        }
+
+        function setChartType(type) {
+            const isLine = type === 'LINE';
+            lineSeries.applyOptions({ visible: isLine });
+            candleSeries.applyOptions({ visible: !isLine });
+            el('lineChartButton').classList.toggle('active', isLine);
+            el('lineChartButton').setAttribute('aria-pressed', String(isLine));
+            el('candleChartButton').classList.toggle('active', !isLine);
+            el('candleChartButton').setAttribute('aria-pressed', String(!isLine));
+        }
+
+        function toast(message, error) {
+            const node = el('toast');
+            window.clearTimeout(toastTimeout);
+            node.textContent = message;
+            node.className = 'toast visible' + (error ? ' error' : '');
+            toastTimeout = window.setTimeout(() => node.classList.remove('visible'), 3800);
+        }
+
+        async function apiRequest(url, options) {
+            const response = await fetch(url, options);
+            const text = await response.text();
+            let payload = null;
+            if (text) {
+                try {
+                    payload = JSON.parse(text);
+                } catch (error) {
+                    if (response.ok) {
+                        console.error(options && options.method || 'GET', url, 'returned invalid JSON:', text, error);
+                        throw new Error('The server returned an invalid response.');
+                    }
+                }
+            }
+            if (!response.ok) {
+                console.error((options && options.method || 'GET') + ' ' + url + ' failed: '
+                    + response.status + ' ' + response.statusText + '; response body:', text);
+                throw new Error((payload && payload.error) || text || response.statusText || 'Request failed.');
+            }
+            return payload;
+        }
+
+        async function refreshWallet() {
+            const url = '/api/wallet/' + encodeURIComponent(USER_ID);
+            const wallet = await apiRequest(url);
+            if (!wallet || wallet.availableBalance == null) {
+                throw new Error('Wallet response is missing availableBalance.');
+            }
+            applyWallet(wallet);
+        }
+
+        function applyWallet(wallet) {
+            availableBalance = Number(wallet.availableBalance);
+            lockedBalance = Number(wallet.lockedBalance || 0);
+            el('walletAvailable').textContent = currencyFormat.format(availableBalance);
+            el('padAvailable').textContent = currencyFormat.format(availableBalance);
+        }
+
+        function renderTableCell(row, value, className) {
+            const cell = row.insertCell();
+            cell.textContent = escapeText(value);
+            if (className) cell.className = className;
+            return cell;
+        }
+
+        function showEmptyState(message) {
+            el('ordersBody').replaceChildren();
+            const row = el('ordersBody').insertRow();
+            const cell = row.insertCell();
+            cell.colSpan = Math.max(1, el('activityHeader').cells.length);
+            cell.className = 'empty-cell';
+            const icon = document.createElement('span');
+            icon.className = 'empty-icon';
+            icon.textContent = '⌁';
+            const text = document.createElement('span');
+            text.textContent = message;
+            cell.append(icon, text);
+        }
+
+        function setActivityHeaders(labels) {
+            const header = el('activityHeader');
+            header.replaceChildren();
+            labels.forEach(label => {
+                const cell = document.createElement('th');
+                cell.textContent = label;
+                header.append(cell);
+            });
+        }
+
+        function visibleOrders() {
+            if (activeView === 'open') return lastOrders.filter(order => order.status === 'PENDING');
+            if (activeView === 'history') return lastOrders;
+            return [];
+        }
+
+        function renderOrders() {
+            const body = el('ordersBody');
+            body.replaceChildren();
+            if (activeView === 'holdings') {
+                el('holdingsSummary').hidden = false;
+                setActivityHeaders(['Instrument', 'Qty', 'Avg. price', 'LTP', 'Current value', 'Overall P&L', 'Action']);
+                renderHoldings(false);
+                return;
+            }
+            el('holdingsSummary').hidden = true;
+            setActivityHeaders(['Time', 'Instrument', 'Type', 'Side', 'Order price', 'Executed price', 'Status', 'Action']);
+            const orders = visibleOrders();
+            el('activityMeta').textContent = activeView === 'open'
+                ? orders.length + ' open order' + (orders.length === 1 ? '' : 's') + ' · Refreshes live'
+                : lastOrders.length + ' recent order' + (lastOrders.length === 1 ? '' : 's');
+            if (!orders.length) {
+                showEmptyState(activeView === 'open'
+                    ? 'You’re all caught up. New open orders will appear here.'
+                    : 'No order history yet. Your placed orders will appear here.');
+                return;
+            }
+
+            orders.forEach(order => {
+                const row = body.insertRow();
+                const time = order.createdAt ? new Date(order.createdAt) : null;
+                renderTableCell(row, time && !Number.isNaN(time.getTime())
+                    ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—');
+                renderTableCell(row, (order.symbol || '—') + ' · ' + (order.symbol === 'AAPL' ? 'Apple Inc.' : ''));
+                renderTableCell(row, order.orderType || 'LIMIT');
+
+                const sideCell = row.insertCell();
+                const side = document.createElement('span');
+                side.className = 'side-pill ' + (order.side === 'BUY' ? 'buy' : 'sell');
+                side.textContent = order.side || '—';
+                sideCell.append(side);
+
+                renderTableCell(row, order.price == null ? '—' : currencyFormat.format(Number(order.price)));
+                renderTableCell(row, order.status === 'FILLED'
+                    && (order.executedPrice != null || order.price != null)
+                    ? currencyFormat.format(Number(order.executedPrice == null
+                        ? order.price : order.executedPrice)) : '—');
+
+                const statusCell = row.insertCell();
+                const status = document.createElement('span');
+                status.className = 'status-pill ' + String(order.status || 'PENDING').toLowerCase();
+                status.textContent = order.status || '—';
+                statusCell.append(status);
+                const actionCell = row.insertCell();
+                if (activeView === 'open' && order.status === 'PENDING') {
+                    const cancel = document.createElement('button');
+                    cancel.type = 'button';
+                    cancel.className = 'cancel-button';
+                    cancel.textContent = 'Cancel';
+                    cancel.addEventListener('click', () => cancelOrder(order, cancel));
+                    actionCell.append(cancel);
+                } else {
+                    actionCell.className = 'action-muted';
+                    actionCell.textContent = '—';
+                }
+            });
+        }
+
+        async function cancelOrder(order, button) {
+            if (!window.confirm('Cancel order #' + order.id + '?')) return;
+            button.disabled = true;
+            let result;
+            try {
+                result = await apiRequest('/api/orders/' + encodeURIComponent(order.id)
+                    + '?userId=' + encodeURIComponent(USER_ID), { method: 'DELETE' });
+                if (!result || !result.order || !result.wallet
+                    || result.order.status !== 'CANCELLED') {
+                    throw new Error('The server returned an invalid cancellation response.');
+                }
+                applyWallet(result.wallet);
+                toast('Order #' + result.order.id + ' cancelled.', false);
+            } catch (error) {
+                button.disabled = false;
+                toast(error.message, true);
+                return;
+            }
+
+            try {
+                await Promise.all([refreshOrders(), fetchHoldings()]);
+            } catch (error) {
+                console.error('Order cancelled, but account data could not be refreshed:', error);
+                toast('Order cancelled; refresh the order and holdings data.', true);
+            }
+        }
+
+        function renderHoldings(animate) {
+            if (activeView !== 'holdings') return;
+
+            const totalInvested = holdings.reduce(
+                (total, holding) => total + Number(holding.totalInvested || 0), 0);
+            let dayPnl = 0;
+            const totalValue = holdings.reduce((total, holding) => {
+                const quantity = Number(holding.quantity || 0);
+                const averagePrice = Number(holding.averageBuyPrice || 0);
+                const ltp = instruments[holding.symbol]
+                    ? instruments[holding.symbol].price
+                    : averagePrice;
+                const reference = instruments[holding.symbol]
+                    ? instruments[holding.symbol].reference
+                    : averagePrice;
+                dayPnl += quantity * (ltp - reference);
+                return total + quantity * ltp;
+            }, 0);
+            const realizedPnl = lastOrders.reduce((total, order) => total
+                + (order.side === 'SELL' && order.status === 'FILLED'
+                    ? Number(order.realizedPnl || 0) : 0), 0);
+            const totalPnl = totalValue - totalInvested + realizedPnl;
+            const totalPnlPercent = totalInvested > 0 ? totalPnl / totalInvested * 100 : 0;
+
+            el('totalInvested').textContent = currencyFormat.format(totalInvested);
+            el('portfolioValue').textContent = currencyFormat.format(totalValue);
+            el('portfolioPnl').textContent = (totalPnl > 0 ? '+' : '') + currencyFormat.format(totalPnl);
+            el('portfolioPnl').className =
+                'holding-metric-value ' + (totalPnl >= 0 ? 'positive' : 'negative');
+            el('portfolioPnlPercent').textContent =
+                (totalPnlPercent > 0 ? '+' : '') + totalPnlPercent.toFixed(2) + '%';
+            el('portfolioPnlPercent').className =
+                'holding-metric-subvalue ' + (totalPnl >= 0 ? 'positive' : 'negative');
+            el('dayPnl').textContent = (dayPnl > 0 ? '+' : '') + currencyFormat.format(dayPnl);
+            el('dayPnl').className = 'holding-metric-value ' + (dayPnl >= 0 ? 'positive' : 'negative');
+
+            const body = el('ordersBody');
+            body.replaceChildren();
+            el('activityMeta').textContent = holdings.length
+                + ' holding' + (holdings.length === 1 ? '' : 's') + ' · Live P&L';
+            if (!holdings.length) {
+                showEmptyState('No holdings yet. Completed BUY orders will appear here.');
+                return;
+            }
+
+            holdings.forEach(holding => {
+                const quantity = Number(holding.quantity || 0);
+                const invested = Number(holding.totalInvested || 0);
+                const averagePrice = Number(holding.averageBuyPrice || 0);
+                const ltp = instruments[holding.symbol]
+                    ? instruments[holding.symbol].price
+                    : averagePrice;
+                const currentValue = quantity * ltp;
+                const pnl = currentValue - invested;
+                const pnlPercent = invested > 0 ? pnl / invested * 100 : 0;
+                const row = body.insertRow();
+                renderTableCell(row, holding.symbol || '—');
+                renderTableCell(row, numberFormat.format(quantity));
+                renderTableCell(row, currencyFormat.format(averagePrice));
+                renderTableCell(row, currencyFormat.format(ltp));
+                renderTableCell(row, currencyFormat.format(currentValue));
+                const pnlCell = row.insertCell();
+                pnlCell.className = animate ? 'pnl-flash' : '';
+                const pnlBadge = document.createElement('span');
+                pnlBadge.className = 'pnl-badge ' + (pnl >= 0 ? 'positive' : 'negative');
+                pnlBadge.title = (pnlPercent >= 0 ? '+' : '') + pnlPercent.toFixed(2) + '%';
+                pnlBadge.textContent = (pnl >= 0 ? '↑ ' : '↓ ')
+                    + (pnl > 0 ? '+' : '') + currencyFormat.format(pnl);
+                pnlCell.append(pnlBadge);
+                if (animate) {
+                    pnlCell.addEventListener('animationend', () => pnlCell.classList.remove('pnl-flash'), { once: true });
+                }
+
+                const actionCell = row.insertCell();
+                const availableQuantity = Number(holding.availableQuantity == null
+                    ? Math.max(0, quantity - Number(holding.reservedQuantity || 0))
+                    : holding.availableQuantity);
+                const exitButton = document.createElement('button');
+                exitButton.type = 'button';
+                exitButton.className = 'exit-button';
+                exitButton.textContent = 'Exit';
+                exitButton.disabled = availableQuantity <= 0;
+                exitButton.title = availableQuantity > 0
+                    ? 'Prepare a market sell for ' + numberFormat.format(availableQuantity) + ' shares'
+                    : 'All shares are reserved by open sell orders';
+                exitButton.addEventListener('click', () => prepareExit(holding.symbol, availableQuantity));
+                actionCell.append(exitButton);
+            });
+        }
+
+        function prepareExit(symbol, quantity) {
+            if (!Number.isInteger(quantity) || quantity <= 0) {
+                toast('No unreserved shares are available to exit.', true);
+                return;
+            }
+            selectInstrument(symbol);
+            setOrderSide('SELL');
+            setOrderType('MARKET');
+            el('orderQuantity').value = String(quantity);
+            updateOrderValue();
+            el('orderForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            toast('Market sell prepared for ' + numberFormat.format(quantity) + ' ' + symbol + '.', false);
+        }
+
+        async function refreshOrders() {
+            const url = '/api/orders/' + encodeURIComponent(USER_ID);
+            const orders = await apiRequest(url);
+            if (!Array.isArray(orders)) {
+                throw new Error('Order history response is not a list.');
+            }
+            const previousStatuses = new Map(lastOrders.map(order => [order.id, order.status]));
+            orders.forEach(order => {
+                if (order.status === 'FILLED' && previousStatuses.get(order.id) === 'PENDING') {
+                    toast(order.side + ' ' + order.symbol + ' order executed at '
+                        + currencyFormat.format(Number(order.executedPrice == null
+                            ? order.price : order.executedPrice)), false);
+                }
+            });
+            lastOrders = orders;
+            renderOrders();
+        }
+
+        async function fetchHoldings() {
+            const url = '/api/holdings/' + encodeURIComponent(USER_ID);
+            const result = await apiRequest(url);
+            if (!Array.isArray(result)) {
+                throw new Error('Holdings response is not a list.');
+            }
+            holdings = result;
+            if (activeView === 'holdings') renderHoldings(false);
+        }
+
+        async function placeOrder(event) {
+            event.preventDefault();
+            const price = Number(el('orderPrice').value);
+            const quantity = Number(el('orderQuantity').value);
+            if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
+                toast('Enter a valid price and whole-share quantity.', true);
+                return;
+            }
+            if (orderSide === 'BUY' && price * quantity > availableBalance) {
+                toast('Required margin exceeds your available cash.', true);
+                return;
+            }
+
+            const button = el('submitOrder');
+            button.disabled = true;
+            try {
+                const response = await apiRequest('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: USER_ID,
+                        symbol: selectedSymbol,
+                        side: orderSide,
+                        orderType,
+                        price: price.toFixed(2),
+                        quantity: String(quantity)
+                    })
+                });
+                const placedOrder = response && response.order ? response.order : response;
+                toast(orderSide + ' ' + selectedSymbol
+                    + (placedOrder && placedOrder.status === 'FILLED'
+                        ? ' executed successfully.' : ' order placed.'), false);
+                await Promise.all([refreshWallet(), refreshOrders(), fetchHoldings()]);
+            } catch (error) {
+                toast(error.message, true);
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function setActivityView(view) {
+            activeView = view;
+            document.querySelectorAll('.activity-tab').forEach(button => {
+                const isActive = button.dataset.view === view;
+                button.classList.toggle('active', isActive);
+                button.setAttribute('aria-selected', String(isActive));
+            });
+            if (view === 'holdings') {
+                fetchHoldings().catch(error => {
+                    console.error('Could not load holdings:', error);
+                    showEmptyState('Could not load holdings: ' + error.message);
+                    el('activityMeta').textContent = 'Holdings unavailable';
+                });
+            }
+            renderOrders();
+        }
+
+        function subscribeToTick(symbol) {
+            return stompClient.subscribe('/topic/ticks/' + symbol, response => {
+                try {
+                    const tick = JSON.parse(response.body);
+                    if (tick.symbol !== symbol) {
+                        console.warn('Ignoring mismatched tick on topic for ' + symbol, tick);
+                        return;
+                    }
+                    updateQuote(symbol, tick);
+                } catch (error) {
+                    console.error('Could not process ' + symbol + ' market tick:', error, response.body);
+                }
+            });
+        }
+
+        function subscribeToDepth(symbol) {
+            return stompClient.subscribe('/topic/depth/' + symbol, response => {
+                try {
+                    const depth = JSON.parse(response.body);
+                    if (depth.symbol !== symbol || symbol !== selectedSymbol) return;
+                    renderDepth(depth);
+                } catch (error) {
+                    console.error('Could not process ' + symbol + ' market depth:', error, response.body);
+                }
+            });
+        }
+
+        function syncTickSubscriptions() {
+            if (!stompClient || !stompClient.connected) return;
+
+            if (activeDepthSubscription) {
+                activeDepthSubscription.unsubscribe();
+                activeDepthSubscription = null;
+            }
+            activeDepthSubscription = subscribeToDepth(selectedSymbol);
+            if (activeTickSubscription) {
+                activeTickSubscription.unsubscribe();
+                activeTickSubscription = null;
+            }
+            const selectedWatchSubscription = watchlistTickSubscriptions.get(selectedSymbol);
+            if (selectedWatchSubscription) {
+                selectedWatchSubscription.unsubscribe();
+                watchlistTickSubscriptions.delete(selectedSymbol);
+            }
+            activeTickSubscription = subscribeToTick(selectedSymbol, true);
+
+            Object.keys(instruments).forEach(symbol => {
+                if (symbol !== selectedSymbol && !watchlistTickSubscriptions.has(symbol)) {
+                    watchlistTickSubscriptions.set(symbol, subscribeToTick(symbol, false));
+                }
+            });
+        }
+
+        function resetSubscriptionsAfterReconnect() {
+            if (activeTickSubscription) activeTickSubscription.unsubscribe();
+            if (activeDepthSubscription) activeDepthSubscription.unsubscribe();
+            watchlistTickSubscriptions.forEach(subscription => subscription.unsubscribe());
+            if (orderTopicSubscription) orderTopicSubscription.unsubscribe();
+            activeTickSubscription = null;
+            activeDepthSubscription = null;
+            orderTopicSubscription = null;
+            watchlistTickSubscriptions.clear();
+            syncTickSubscriptions();
+            orderTopicSubscription = stompClient.subscribe('/topic/orders/' + USER_ID, response => {
+                try {
+                    const order = JSON.parse(response.body);
+                    if (order.status === 'FILLED') {
+                        toast(order.side + ' ' + order.symbol + ' order executed at '
+                            + currencyFormat.format(Number(order.executedPrice == null
+                                ? order.price : order.executedPrice)), false);
+                        fetchHoldings().catch(error =>
+                            console.error('Could not refresh holdings after fill:', error));
+                    } else if (order.status === 'REJECTED') {
+                        toast('Order ' + order.id + ' was rejected during settlement.', true);
+                    }
+                    Promise.all([refreshWallet(), refreshOrders()])
+                        .catch(error => console.error('Could not refresh account after order update:', error));
+                } catch (error) {
+                    console.error('Could not process order update:', error, response.body);
+                }
+            });
+        }
+
+        function connectMarketFeed() {
+            if (typeof SockJS === 'undefined' || typeof Stomp === 'undefined') {
+                el('marketLiveText').textContent = 'Feed unavailable';
+                el('marketLiveDot').style.background = '#f0b858';
+                return;
+            }
+            const socket = new SockJS('/ws-market');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null;
+            stompClient.reconnect_delay = 5000;
+            stompClient.connect({}, () => {
+                el('marketLiveText').textContent = 'Live market';
+                resetSubscriptionsAfterReconnect();
+            }, error => {
+                el('marketLiveText').textContent = 'Reconnecting';
+                el('marketLiveDot').style.background = '#f0b858';
+                console.error('STOMP connection failed:', error);
+            });
+        }
+
+        el('buyTab').addEventListener('click', () => setOrderSide('BUY'));
+        el('sellTab').addEventListener('click', () => setOrderSide('SELL'));
+        el('limitTab').addEventListener('click', () => setOrderType('LIMIT'));
+        el('marketTab').addEventListener('click', () => setOrderType('MARKET'));
+        el('lineChartButton').addEventListener('click', () => setChartType('LINE'));
+        el('candleChartButton').addEventListener('click', () => setChartType('CANDLES'));
+        el('orderPrice').addEventListener('input', updateOrderValue);
+        el('orderPrice').addEventListener('change', event => {
+            const value = Number(event.target.value);
+            if (Number.isFinite(value) && value > 0) {
+                event.target.value = (Math.round((value + Number.EPSILON) * 100) / 100).toFixed(2);
+                updateOrderValue();
+            }
+        });
+        el('orderQuantity').addEventListener('input', updateOrderValue);
+        el('orderQuantity').addEventListener('change', event => {
+            const value = Number(event.target.value);
+            if (Number.isFinite(value) && value > 0) {
+                event.target.value = String(Math.round(value));
+                updateOrderValue();
+            }
+        });
+        document.querySelectorAll('.quick-chip[data-add]').forEach(button => {
+            button.addEventListener('click', () => {
+                const quantity = Number(el('orderQuantity').value) || 0;
+                el('orderQuantity').value = String(quantity + Number(button.dataset.add));
+                updateOrderValue();
+            });
+        });
+        el('maxQuantity').addEventListener('click', () => {
+            if (orderSide !== 'BUY') {
+                const holding = holdings.find(item => item.symbol === selectedSymbol);
+                const quantity = holding
+                    ? Number(holding.availableQuantity == null
+                        ? Math.max(0, Number(holding.quantity || 0) - Number(holding.reservedQuantity || 0))
+                        : holding.availableQuantity)
+                    : 0;
+                el('orderQuantity').value = String(quantity);
+                updateOrderValue();
+                return;
+            }
+            const price = Number(el('orderPrice').value) || instruments[selectedSymbol].price;
+            const max = price > 0 ? Math.floor(availableBalance / price) : 0;
+            el('orderQuantity').value = String(max);
+            updateOrderValue();
+        });
+        document.querySelectorAll('.product-tab').forEach(button => {
+            button.addEventListener('click', () => {
+                currentProduct = button.dataset.product;
+                document.querySelectorAll('.product-tab').forEach(tab => tab.classList.toggle('active', tab === button));
+                el('productNote').textContent = currentProduct === 'Delivery' ? 'CNC' : 'MIS';
+            });
+        });
+        document.querySelectorAll('.timeframe').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.timeframe').forEach(item => item.classList.toggle('active', item === button));
+                el('chartPeriodLabel').textContent = selectedSymbol + ' · ' + button.dataset.timeframe;
+                chart.timeScale().fitContent();
+            });
+        });
+        document.querySelectorAll('.activity-tab').forEach(button => {
+            button.addEventListener('click', () => setActivityView(button.dataset.view));
+        });
+        el('orderForm').addEventListener('submit', placeOrder);
+
+        initializeDepthRows();
+        renderDepth(null);
+        renderWatchlist();
+        updateInstrumentHeader();
+        el('orderPrice').value = instruments.AAPL.price.toFixed(2);
+        seedChart(instruments.AAPL.price);
+        refreshWallet().catch(error => {
+            el('walletAvailable').textContent = 'Unavailable';
+            el('padAvailable').textContent = 'Unavailable';
+            console.error('Wallet request failed:', error);
+            toast('Wallet unavailable: ' + error.message, true);
+        });
+        refreshOrders().catch(error => {
+            console.error('GET /api/orders/' + encodeURIComponent(USER_ID) + ' failed:', error);
+            showEmptyState('Could not load orders: ' + error.message);
+            el('activityMeta').textContent = 'Order history unavailable';
+        });
+        fetchHoldings().catch(error => {
+            console.error('GET /api/holdings/' + encodeURIComponent(USER_ID) + ' failed:', error);
+            if (activeView === 'holdings') {
+                showEmptyState('Could not load holdings: ' + error.message);
+                el('activityMeta').textContent = 'Holdings unavailable';
+            }
+        });
+        connectMarketFeed();
+    })();
+</script>
+</body>
+</html>
