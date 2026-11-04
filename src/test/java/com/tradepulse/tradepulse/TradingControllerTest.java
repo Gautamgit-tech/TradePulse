@@ -6,6 +6,7 @@ import com.tradepulse.tradepulse.model.OrderStatus;
 import com.tradepulse.tradepulse.model.OrderType;
 import com.tradepulse.tradepulse.model.Holding;
 import com.tradepulse.tradepulse.model.Wallet;
+import com.tradepulse.tradepulse.dto.PlaceOrderRequest;
 import com.tradepulse.tradepulse.controller.ApiExceptionHandler;
 import com.tradepulse.tradepulse.service.HoldingService;
 import com.tradepulse.tradepulse.service.InsufficientSharesException;
@@ -20,6 +21,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -51,7 +53,8 @@ class TradingControllerTest {
         when(tradingService.getOrCreateWallet("demo-user")).thenReturn(
                 new Wallet("demo-user", "INR", new BigDecimal("100000.00"), BigDecimal.ZERO));
 
-        mockMvc.perform(get("/api/wallet/{userId}", "demo-user"))
+        mockMvc.perform(get("/api/wallet/{userId}", "attacker-controlled-id")
+                        .principal(() -> "demo-user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userId").value("demo-user"))
                 .andExpect(jsonPath("$.currency").value("INR"))
@@ -71,10 +74,11 @@ class TradingControllerTest {
         when(holdingService.getActiveHoldings("demo-user")).thenReturn(List.of());
 
         mockMvc.perform(post("/api/orders")
+                        .principal(() -> "demo-user")
                         .contentType("application/json")
                         .content("""
                                 {
-                                  "userId": "demo-user",
+                                  "userId": "attacker-controlled-id",
                                   "symbol": "AAPL",
                                   "side": "BUY",
                                   "orderType": "LIMIT",
@@ -88,7 +92,9 @@ class TradingControllerTest {
                 .andExpect(jsonPath("$.wallet.userId").value("demo-user"))
                 .andExpect(jsonPath("$.holdings").isArray());
 
-        verify(tradingService).placeOrder(any());
+        var requestCaptor = forClass(PlaceOrderRequest.class);
+        verify(tradingService).placeOrder(requestCaptor.capture());
+        org.junit.jupiter.api.Assertions.assertEquals("demo-user", requestCaptor.getValue().getUserId());
     }
 
     @Test
@@ -96,6 +102,7 @@ class TradingControllerTest {
         doThrow(new InsufficientSharesException()).when(tradingService).placeOrder(any());
 
         mockMvc.perform(post("/api/orders")
+                        .principal(() -> "demo-user")
                         .contentType("application/json")
                         .content("""
                                 {
@@ -118,7 +125,8 @@ class TradingControllerTest {
                         new BigDecimal("100.00"), BigDecimal.ONE, BigDecimal.ZERO,
                         OrderStatus.PENDING, Instant.parse("2026-11-02T10:00:00Z"))));
 
-        mockMvc.perform(get("/api/orders/{userId}", "demo-user"))
+        mockMvc.perform(get("/api/orders/{userId}", "attacker-controlled-id")
+                        .principal(() -> "demo-user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].symbol").value("AAPL"))
                 .andExpect(jsonPath("$[0].status").value("PENDING"));
@@ -132,7 +140,8 @@ class TradingControllerTest {
                 new Holding("demo-user", "AAPL", new BigDecimal("2"),
                         new BigDecimal("100.00"), new BigDecimal("200.00"))));
 
-        mockMvc.perform(get("/api/holdings/{userId}", "demo-user"))
+        mockMvc.perform(get("/api/holdings/{userId}", "attacker-controlled-id")
+                        .principal(() -> "demo-user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].symbol").value("AAPL"))
                 .andExpect(jsonPath("$[0].quantity").value(2))
@@ -152,7 +161,7 @@ class TradingControllerTest {
         when(tradingService.getOrCreateWallet("demo-user")).thenReturn(
                 new Wallet("demo-user", "INR", new BigDecimal("100000.00"), BigDecimal.ZERO));
 
-        mockMvc.perform(delete("/api/orders/{orderId}", "order-1").param("userId", "demo-user"))
+        mockMvc.perform(delete("/api/orders/{orderId}", "order-1").principal(() -> "demo-user"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.order.id").value("order-1"))
                 .andExpect(jsonPath("$.order.status").value("CANCELLED"))
@@ -166,7 +175,7 @@ class TradingControllerTest {
                 "Order cannot be cancelled", false))
                 .when(tradingService).cancelOrder("filled-order", "demo-user");
 
-        mockMvc.perform(delete("/api/orders/{orderId}", "filled-order").param("userId", "demo-user"))
+        mockMvc.perform(delete("/api/orders/{orderId}", "filled-order").principal(() -> "demo-user"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("Order cannot be cancelled"));
     }

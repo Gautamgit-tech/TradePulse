@@ -1,11 +1,13 @@
 package com.tradepulse.tradepulse;
 
 import com.tradepulse.tradepulse.service.OrderMatchingService;
+import com.tradepulse.tradepulse.market.MarketDataProcessor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,13 +26,15 @@ class MarketDataSimulatorTest {
 
     private SimpMessagingTemplate messagingTemplate;
     private OrderMatchingService orderMatchingService;
+    private MarketDataProcessor marketDataProcessor;
     private MarketDataSimulator simulator;
 
     @BeforeEach
     void setUp() {
         messagingTemplate = mock(SimpMessagingTemplate.class);
         orderMatchingService = mock(OrderMatchingService.class);
-        simulator = new MarketDataSimulator(messagingTemplate, orderMatchingService);
+        marketDataProcessor = new MarketDataProcessor(messagingTemplate, orderMatchingService);
+        simulator = new MarketDataSimulator(marketDataProcessor);
     }
 
     @Test
@@ -39,18 +43,27 @@ class MarketDataSimulatorTest {
 
         ArgumentCaptor<String> topicCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object> tickCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(messagingTemplate, times(10)).convertAndSend(topicCaptor.capture(), tickCaptor.capture());
+        verify(messagingTemplate, times(18)).convertAndSend(topicCaptor.capture(), tickCaptor.capture());
         assertEquals(Set.of(
                 "/topic/ticks/AAPL",
                 "/topic/ticks/NVDA",
                 "/topic/ticks/MSFT",
-                "/topic/ticks/RELIANCE",
-                "/topic/ticks/INFY",
+                "/topic/ticks/TSLA",
+                "/topic/ticks/AMZN",
+                "/topic/ticks/GOOGL",
+                "/topic/ticks/BINANCE:BTCUSDT",
+                "/topic/ticks/BINANCE:ETHUSDT",
+                "/topic/ticks/BINANCE:SOLUSDT",
                 "/topic/depth/AAPL",
                 "/topic/depth/NVDA",
                 "/topic/depth/MSFT",
-                "/topic/depth/RELIANCE",
-                "/topic/depth/INFY"), Set.copyOf(topicCaptor.getAllValues()));
+                "/topic/depth/TSLA",
+                "/topic/depth/AMZN",
+                "/topic/depth/GOOGL",
+                "/topic/depth/BINANCE:BTCUSDT",
+                "/topic/depth/BINANCE:ETHUSDT",
+                "/topic/depth/BINANCE:SOLUSDT"
+                ), Set.copyOf(topicCaptor.getAllValues()));
 
         for (int index = 0; index < topicCaptor.getAllValues().size(); index++) {
             String topic = topicCaptor.getAllValues().get(index);
@@ -66,7 +79,7 @@ class MarketDataSimulatorTest {
                 long tickVolume = (long) message.get("tickVolume");
                 assertTrue(tickVolume >= 50 && tickVolume <= 500);
                 assertTrue(((Number) message.get("volume")).longValue() >= tickVolume);
-                assertTrue(((Number) message.get("barTime")).longValue() % 5 == 0);
+                assertTrue(((Number) message.get("barTime")).longValue() % 60 == 0);
                 verify(orderMatchingService).matchPendingOrders(eq(symbol), any(BigDecimal.class));
             } else {
                 String symbol = topic.substring("/topic/depth/".length());
@@ -99,5 +112,31 @@ class MarketDataSimulatorTest {
                 assertEquals(askTotal, ((Number) message.get("totalSellQuantity")).longValue());
             }
         }
+    }
+
+    @Test
+    void retainsOneMinuteCandlesAndCapsHistoryAt150Entries() {
+        Instant firstMinute = Instant.parse("2026-11-04T10:00:00Z");
+        marketDataProcessor.processTick("AAPL", new BigDecimal("100.00"), 10, firstMinute);
+        marketDataProcessor.processTick("AAPL", new BigDecimal("105.00"), 20, firstMinute.plusSeconds(30));
+        marketDataProcessor.processTick("AAPL", new BigDecimal("98.00"), 30, firstMinute.plusSeconds(59));
+
+        var firstCandle = marketDataProcessor.getRecentCandles("AAPL").get(0);
+        assertEquals(firstMinute.getEpochSecond(), firstCandle.time());
+        assertEquals(new BigDecimal("100.00"), firstCandle.open());
+        assertEquals(new BigDecimal("105.00"), firstCandle.high());
+        assertEquals(new BigDecimal("98.00"), firstCandle.low());
+        assertEquals(new BigDecimal("98.00"), firstCandle.close());
+        assertEquals(60, firstCandle.volume());
+
+        for (int minute = 1; minute <= 150; minute++) {
+            marketDataProcessor.processTick("AAPL", new BigDecimal("100.00"), 1,
+                    firstMinute.plusSeconds(minute * 60L));
+        }
+        var retainedCandles = marketDataProcessor.getRecentCandles("AAPL");
+        assertEquals(150, retainedCandles.size());
+        assertEquals(firstMinute.plusSeconds(60).getEpochSecond(), retainedCandles.get(0).time());
+        assertEquals(firstMinute.plusSeconds(150 * 60L).getEpochSecond(),
+                retainedCandles.get(retainedCandles.size() - 1).time());
     }
 }

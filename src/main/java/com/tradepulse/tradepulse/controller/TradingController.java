@@ -13,12 +13,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api")
@@ -33,33 +33,35 @@ public class TradingController {
     }
 
     @GetMapping("/wallet/{userId}")
-    public Wallet getWallet(@PathVariable String userId) {
-        return tradingService.getOrCreateWallet(userId);
+    public Wallet getWallet(@PathVariable String userId, Principal principal) {
+        return tradingService.getOrCreateWallet(principal.getName());
     }
 
     @PostMapping("/orders")
-    public OrderPlacementResponse placeOrder(@Valid @RequestBody PlaceOrderRequest request) {
+    public OrderPlacementResponse placeOrder(@Valid @RequestBody PlaceOrderRequest request,
+                                             Principal principal) {
+        request.setUserId(principal.getName());
         Order order = tradingService.placeOrder(request);
         return new OrderPlacementResponse(
                 order,
-                tradingService.getOrCreateWallet(request.getUserId()),
-                holdingService.getActiveHoldings(request.getUserId()));
+                tradingService.getOrCreateWallet(principal.getName()),
+                holdingService.getActiveHoldings(principal.getName()));
     }
 
     @GetMapping("/orders/{userId}")
-    public List<Order> getOrders(@PathVariable String userId) {
-        return tradingService.getRecentOrders(userId);
+    public List<Order> getOrders(@PathVariable String userId, Principal principal) {
+        return tradingService.getRecentOrders(principal.getName());
     }
 
     @DeleteMapping("/orders/{orderId}")
-    public OrderCancellationResponse cancelOrder(@PathVariable String orderId,
-                                                  @RequestParam("userId") String userId) {
+    public OrderCancellationResponse cancelOrder(@PathVariable String orderId, Principal principal) {
+        String userId = principal.getName();
         Order order = tradingService.cancelOrder(orderId, userId);
         return new OrderCancellationResponse(order, tradingService.getOrCreateWallet(userId));
     }
 
     @GetMapping("/holdings/{userId}")
-    public List<Holding> getHoldings(@PathVariable String userId) {
-        return holdingService.getActiveHoldings(userId);
+    public List<Holding> getHoldings(@PathVariable String userId, Principal principal) {
+        return holdingService.getActiveHoldings(principal.getName());
     }
 }

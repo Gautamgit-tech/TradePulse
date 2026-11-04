@@ -7,7 +7,7 @@
 ![Lightweight Charts](https://img.shields.io/badge/Charts-Lightweight%20Charts-2962FF)
 ![Docker Compose](https://img.shields.io/badge/Container-Docker%20Compose-2496ED?logo=docker&logoColor=white)
 
-TradePulse is a demo trading platform built around real-time market streams, guarded order execution, portfolio tracking, and an interactive browser trading terminal. It combines Spring MVC REST APIs, MongoDB persistence, a tick-driven matching engine, STOMP over SockJS, and Lightweight Charts.
+TradePulse is a demo trading platform built around real-time market streams, guarded order execution, portfolio tracking, and an interactive browser trading terminal. It combines Spring MVC REST APIs, MongoDB persistence, stateless JWT authentication, a tick-driven matching engine, STOMP over SockJS, and Lightweight Charts.
 
 > **Version note:** The repository's `pom.xml` currently targets Java 17 source compatibility and declares Spring Boot 4.1.2. The Docker images use Java 21 as requested; running this application on Java 21 does not change its configured Java source target. The Spring Boot badge reflects the checked-in Maven parent rather than the originally proposed Boot 3 baseline.
 
@@ -40,25 +40,28 @@ flowchart LR
 - **Tick-driven limit matching:** Pending limit orders are checked against the matching symbol's incoming market price. MARKET orders are submitted to immediate execution and settlement.
 - **Full trade lifecycle:** BUY orders reserve cash and add filled shares to holdings; holdings are valued against live prices; SELL/exit orders settle proceeds and realized P&L; cancelling a pending order unlocks cash or releases reserved shares.
 - **Auditable money movement:** Wallet locks, cancellation unlocks, and equity sale credits are recorded as ledger entries.
+- **Multi-user authentication:** User accounts use BCrypt password hashes and 24-hour HMAC-SHA256 JWTs. REST requests and private order-topic subscriptions are scoped to the authenticated user.
 - **Live trading UI:** Symbol-aware STOMP subscriptions feed the watchlist, chart, depth ladder, and order-status updates. The chart supports line/candlestick views and OHLCV hover details.
 
 ## API reference
 
-The application listens on port `8081`. JSON request examples use the demo user's `demo-user` identifier.
+The application listens on port `8081`. All `/api/wallet/**`, `/api/orders/**`, and `/api/holdings/**` requests require `Authorization: Bearer <token>`. Any user ID in a legacy path or order body is ignored in favor of the identity in the validated JWT.
 
 | Method | Path | Payload / parameters | Description |
 |---|---|---|---|
-| `GET` | `/api/wallet/{userId}` | Path: `userId` | Returns the user's INR wallet, creating the demo wallet if needed. |
+| `GET` | `/api/wallet/{userId}` | Path: `userId` (ignored; identity comes from the JWT) | Returns the authenticated user's INR wallet, initializing it with ₹1,00,000 if needed. |
+| `POST` | `/api/auth/register` | `{ "fullName", "email", "password" }` | Creates an account, initializes its independent INR wallet with ₹1,00,000, and returns a JWT and profile. |
+| `POST` | `/api/auth/login` | `{ "email", "password" }` | Authenticates credentials and returns a JWT and profile. |
+| `GET` | `/api/auth/me` | Bearer token | Returns the authenticated profile and current available cash. |
 | `POST` | `/api/orders` | JSON below | Places a BUY or SELL LIMIT/MARKET order. Returns `order`, updated `wallet`, and `holdings`. |
-| `GET` | `/api/orders/{userId}` | Path: `userId` | Returns up to 100 recent orders, newest first. |
-| `DELETE` | `/api/orders/{orderId}?userId={userId}` | Path: `orderId`; query: `userId` | Cancels a user's PENDING order and returns the cancelled `order` and updated `wallet`. |
-| `GET` | `/api/holdings/{userId}` | Path: `userId` | Returns the user's active holdings. |
+| `GET` | `/api/orders/{userId}` | Path: `userId` (ignored; identity comes from the JWT) | Returns up to 100 recent orders for the authenticated user, newest first. |
+| `DELETE` | `/api/orders/{orderId}` | Path: `orderId` | Cancels the authenticated user's PENDING order and returns the cancelled `order` and updated `wallet`. |
+| `GET` | `/api/holdings/{userId}` | Path: `userId` (ignored; identity comes from the JWT) | Returns the authenticated user's active holdings. |
 
 Example order request:
 
 ```json
 {
-  "userId": "demo-user",
   "symbol": "AAPL",
   "side": "BUY",
   "orderType": "LIMIT",
@@ -67,11 +70,11 @@ Example order request:
 }
 ```
 
-`side` is `BUY` or `SELL`; `orderType` is `LIMIT` or `MARKET`. Order statuses include `PENDING`, `FILLED`, `REJECTED`, and `CANCELLED`. Invalid order input and insufficient shares return `400`; insufficient wallet funds return `409`; a missing order or an order not owned by the supplied user returns `404`; an order that is no longer cancellable returns `400`.
+`userId` is assigned by the authenticated principal and must not be sent by clients. `side` is `BUY` or `SELL`; `orderType` is `LIMIT` or `MARKET`. Order statuses include `PENDING`, `FILLED`, `REJECTED`, and `CANCELLED`. Invalid order input and insufficient shares return `400`; insufficient wallet funds return `409`; a missing order or an order not owned by the authenticated user returns `404`; an order that is no longer cancellable returns `400`.
 
 ## STOMP topic schema
 
-Connect through the SockJS endpoint `/ws-market` and subscribe to the topics below.
+Connect through the SockJS endpoint `/ws-market`. Send `Authorization: Bearer <token>` as a STOMP CONNECT header to subscribe to the authenticated user's private orders topic. Tick and depth subscriptions are public.
 
 | Topic | Message shape | Description |
 |---|---|---|
@@ -86,16 +89,21 @@ Connect through the SockJS endpoint `/ws-market` and subscribe to the topics bel
 - Java 21 (the project compiles to its configured Java 17 source target)
 - MongoDB 7 listening on `localhost:27017`, or Docker with Compose
 - Git
+- A base64-encoded JWT HMAC key containing at least 32 bytes
 
 Start the application with a local MongoDB instance:
 
 ```powershell
+$bytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+$env:TRADEPULSE_JWT_SECRET = [Convert]::ToBase64String($bytes)
 .\mvnw.cmd spring-boot:run
 ```
 
 On macOS/Linux:
 
 ```bash
+export TRADEPULSE_JWT_SECRET="$(openssl rand -base64 32)"
 ./mvnw spring-boot:run
 ```
 
@@ -115,7 +123,17 @@ The browser UI is served by Spring Boot at [http://localhost:8081/](http://local
 
 Build the multi-stage image and start MongoDB and the backend:
 
+Generate a signing key once per deployment environment, then export it in the shell where Compose will run:
+
+```powershell
+$bytes = New-Object byte[] 32
+[Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+$env:TRADEPULSE_JWT_SECRET = [Convert]::ToBase64String($bytes)
+docker compose up --build
+```
+
 ```bash
+export TRADEPULSE_JWT_SECRET="$(openssl rand -base64 32)"
 docker compose up --build
 ```
 

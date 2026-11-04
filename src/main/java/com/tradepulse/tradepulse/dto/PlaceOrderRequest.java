@@ -10,7 +10,6 @@ import java.math.BigDecimal;
 
 public class PlaceOrderRequest {
 
-    @NotBlank
     private String userId;
 
     @NotBlank
@@ -27,7 +26,7 @@ public class PlaceOrderRequest {
     private BigDecimal price;
 
     @NotNull
-    @DecimalMin(value = "0.00000001")
+    @DecimalMin(value = "0.0001")
     private BigDecimal quantity;
 
     public String getUserId() {

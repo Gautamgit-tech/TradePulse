@@ -26,6 +26,7 @@ services:
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://mongodb:27017/tradepulse_db
       SERVER_PORT: "8081"
+      TRADEPULSE_JWT_SECRET: ${TRADEPULSE_JWT_SECRET:?Set TRADEPULSE_JWT_SECRET to a base64-encoded key of at least 32 bytes}
     networks:
       - tradepulse-network
 

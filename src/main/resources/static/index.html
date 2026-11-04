@@ -3,26 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0a0e17">
+    <meta name="theme-color" content="#f8fafc">
     <title>TradePulse | Markets</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
         :root {
-            color-scheme: dark;
-            --page: #0a0e17;
-            --surface: rgba(17, 24, 39, .92);
-            --surface-raised: #111827;
-            --surface-hover: #182234;
-            --line: rgba(255, 255, 255, .08);
-            --text: #edf2f7;
-            --muted: #8290a0;
-            --dim: #596777;
-            --green: #00c087;
-            --green-soft: #102b27;
-            --red: #ff6577;
-            --red-soft: #321d25;
+            color-scheme: light;
+            --page: #f8fafc;
+            --surface: #ffffff;
+            --surface-raised: #ffffff;
+            --surface-hover: #f8fafc;
+            --line: #e2e8f0;
+            --text: #0f172a;
+            --muted: #64748b;
+            --dim: #94a3b8;
+            --green: #00d09c;
+            --green-soft: #e8fbf5;
+            --red: #eb5b3c;
+            --red-soft: #fff0ed;
             --amber: #f0b858;
             font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background: var(--page);
@@ -30,15 +30,15 @@
         }
 
         * { box-sizing: border-box; }
-        body { min-width: 360px; min-height: 100vh; margin: 0; background: radial-gradient(ellipse at 50% -30%, #172334 0, var(--page) 55%); }
+        body { min-width: 360px; min-height: 100vh; margin: 0; background: #f8fafc; }
         button, input { font: inherit; }
         button { color: inherit; }
 
         .topbar {
             position: sticky; z-index: 20; top: 0; display: flex; min-height: 68px;
             align-items: center; gap: 26px; padding: 0 28px;
-            border-bottom: 1px solid var(--line); background: rgba(9, 13, 19, .96);
-            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--line); background: rgba(255, 255, 255, .96);
+            box-shadow: 0 2px 10px rgba(15, 23, 42, .04); backdrop-filter: blur(18px);
         }
         .brand { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
         .brand-mark {
@@ -52,21 +52,119 @@
         }
         .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(0, 192, 135, .6); animation: pulse 1.8s infinite; }
         @keyframes pulse { 70% { box-shadow: 0 0 0 7px rgba(0, 192, 135, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 192, 135, 0); } }
-        .indices { display: flex; flex: 1; align-items: center; gap: 26px; min-width: 0; }
+        .indices { display: flex; flex: 1; align-items: center; gap: 12px; min-width: 0; }
         .index-item { display: flex; align-items: center; gap: 9px; white-space: nowrap; }
         .index-name { color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .04em; }
-        .index-value { color: #dce4ec; font-size: 11px; font-variant-numeric: tabular-nums; }
+        .index-value { color: #334155; font-size: 11px; font-variant-numeric: tabular-nums; }
         .index-change { color: var(--green); font-size: 10px; }
-        .index-aapl { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .index-aapl { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; min-width: 0; white-space: nowrap; }
         .index-aapl .index-value { font-weight: 650; }
+        .provider-badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; padding: 5px 8px; border: 1px solid rgba(0, 192, 135, .18); border-radius: 999px; background: rgba(0, 192, 135, .07); color: #8de0c0; font-size: 8px; font-weight: 750; letter-spacing: .06em; white-space: nowrap; }
+        .provider-badge::before { width: 6px; height: 6px; border-radius: 50%; background: #00c087; box-shadow: 0 0 8px rgba(0, 192, 135, .5); content: ""; }
+        .provider-badge.simulated { border-color: rgba(83, 163, 235, .2); background: rgba(83, 163, 235, .07); color: #9dc9ed; }
+        .provider-badge.simulated::before { background: #63a8e8; box-shadow: 0 0 8px rgba(83, 163, 235, .45); }
         .header-spacer { flex: 1; }
         .wallet-chip {
             display: flex; flex: 0 0 auto; flex-direction: column; gap: 3px; padding: 8px 12px;
-            border: 1px solid #263541; border-radius: 10px; background: #101923;
+            border: 1px solid #e2e8f0; border-radius: 10px; background: #ffffff;
         }
         .wallet-label { color: var(--muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
-        .wallet-amount { color: #e7f2ef; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
-        .profile { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border: 1px solid #334354; border-radius: 50%; background: #1a2734; color: #dce7f1; font-size: 11px; font-weight: 700; }
+        .wallet-amount { color: #0f172a; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .profile { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border: 1px solid #cbd5e1; border-radius: 50%; background: #f1f5f9; color: #334155; font-size: 11px; font-weight: 700; }
+        .profile-control { display: flex; align-items: center; gap: 9px; }
+        .profile-control[hidden] { display: none; }
+        .profile-name { max-width: 130px; overflow: hidden; color: #334155; font-size: 10px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+        .logout-button { padding: 6px 9px; border: 1px solid #cbd5e1; border-radius: 7px; background: #ffffff; color: var(--muted); font-size: 9px; cursor: pointer; }
+        .logout-button:hover { border-color: var(--red); color: #ff9aa7; }
+        .auth-overlay { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; overflow-y: auto; padding: 24px; background: #eaf0f2; }
+        .auth-overlay[hidden] { display: none; }
+        .auth-card { display: grid; width: min(1080px, 100%); min-height: min(690px, calc(100vh - 48px)); grid-template-columns: 1.04fr .96fr; overflow: hidden; border: 1px solid #dfe6e9; border-radius: 25px; background: #fff; box-shadow: 0 30px 90px rgba(23, 45, 59, .2); color: #17252d; }
+        .auth-visual { position: relative; display: flex; min-height: 620px; flex-direction: column; overflow: hidden; padding: 34px 38px; background: radial-gradient(ellipse at 70% 20%, rgba(32, 172, 143, .34), transparent 34%), linear-gradient(145deg, #102d39, #123f4a 54%, #0c292f); color: #f3fbfa; }
+        .auth-visual::before, .auth-visual::after { position: absolute; right: -120px; bottom: -180px; width: 480px; height: 480px; border: 1px solid rgba(151, 231, 211, .13); border-radius: 50%; content: ""; }
+        .auth-visual::after { right: -70px; bottom: -130px; width: 380px; height: 380px; }
+        .auth-brand { position: relative; z-index: 1; display: flex; align-items: center; gap: 11px; }
+        .auth-brand .brand-mark { width: 37px; height: 37px; border-radius: 11px; }
+        .auth-brand .brand-name { font-size: 19px; }
+        .auth-visual-copy { position: relative; z-index: 1; max-width: 430px; margin: auto 0 22px; }
+        .auth-eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #90d9c3; font-size: 10px; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+        .auth-eyebrow::before { width: 7px; height: 7px; border-radius: 50%; background: #31d6a1; box-shadow: 0 0 15px rgba(49, 214, 161, .8); content: ""; }
+        .auth-visual-title { margin: 18px 0 12px; font-size: clamp(30px, 4vw, 46px); font-weight: 680; letter-spacing: -.055em; line-height: 1.08; }
+        .auth-visual-title span { color: #76ddc2; }
+        .auth-visual-description { max-width: 360px; margin: 0; color: #b6cbd0; font-size: 13px; line-height: 1.75; }
+        .auth-market-card { position: relative; z-index: 1; margin: 0 0 auto; padding: 17px 18px 10px; border: 1px solid rgba(210, 244, 237, .17); border-radius: 15px; background: rgba(7, 24, 31, .3); backdrop-filter: blur(12px); }
+        .auth-market-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .auth-market-label { color: #abc2c5; font-size: 10px; }
+        .auth-market-price { display: block; margin-top: 6px; color: #f3fbfa; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+        .auth-market-change { padding: 6px 8px; border-radius: 7px; background: rgba(49, 214, 161, .12); color: #72e0ba; font-size: 10px; font-weight: 700; }
+        .auth-chart { display: block; width: 100%; height: 130px; margin-top: 8px; overflow: visible; }
+        .auth-visual-foot { position: relative; z-index: 1; margin-top: 26px; color: #8ca9ae; font-size: 10px; }
+        .auth-form-panel { display: flex; align-items: center; justify-content: center; padding: 52px clamp(28px, 5vw, 66px); }
+        .auth-form-content { width: min(100%, 370px); }
+        .auth-kicker { margin: 0 0 10px; color: #16856f; font-size: 10px; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; }
+        .auth-title { margin: 0 0 9px; color: #17252d; font-size: 30px; font-weight: 730; letter-spacing: -.045em; }
+        .auth-subtitle { margin: 0 0 26px; color: #71818a; font-size: 12px; line-height: 1.6; }
+        .auth-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 23px; padding: 4px; border: 1px solid #e8edef; border-radius: 10px; background: #f4f7f8; }
+        .auth-mode { min-height: 38px; padding: 8px 10px; border: 0; border-radius: 7px; background: transparent; color: #71818a; font-size: 11px; font-weight: 650; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; }
+        .auth-mode.active { background: #fff; color: #163d3b; box-shadow: 0 1px 5px rgba(24, 45, 54, .12); }
+        .auth-label { display: block; margin: 15px 0 7px; color: #34464e; font-size: 10px; font-weight: 680; }
+        .auth-label[hidden], .auth-input-wrap[hidden] { display: none; }
+        .auth-input-wrap { position: relative; }
+        .auth-field { display: block; width: 100%; height: 48px; margin: 0; padding: 0 13px; border: 1px solid #dce5e8; border-radius: 9px; outline: 0; background: #fbfcfc; color: #1b2b32; font-size: 12px; transition: border-color .15s, box-shadow .15s, background .15s; }
+        .auth-field::placeholder { color: #9aa8ad; }
+        .auth-field[hidden] { display: none; }
+        .auth-field:focus { border-color: #29a88c; background: #fff; box-shadow: 0 0 0 3px rgba(41, 168, 140, .12); }
+        .auth-input-wrap .auth-field { padding-right: 64px; }
+        .auth-input-wrap .auth-field:not([type="password"]):not([type="text"]) { padding-right: 13px; }
+        .auth-visibility { position: absolute; top: 50%; right: 9px; padding: 7px 8px; transform: translateY(-50%); border: 0; border-radius: 6px; background: transparent; color: #71818a; font-size: 10px; font-weight: 650; cursor: pointer; }
+        .auth-visibility:hover { background: #eff5f4; color: #147c67; }
+        .auth-help { margin: 8px 0 0; color: #89979c; font-size: 10px; line-height: 1.5; }
+        .auth-error { min-height: 16px; margin: 12px 0 0; color: #bf3546; font-size: 10px; }
+        .auth-submit { width: 100%; min-height: 49px; margin-top: 11px; border: 0; border-radius: 9px; background: linear-gradient(105deg, #18aa89, #108c7c); color: #fff; font-size: 12px; font-weight: 740; cursor: pointer; box-shadow: 0 7px 16px rgba(16, 140, 124, .17); transition: transform .15s, box-shadow .15s, opacity .15s; }
+        .auth-submit:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(16, 140, 124, .23); }
+        .auth-submit:disabled { opacity: .6; cursor: wait; }
+        .auth-security-note { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 19px 0 0; color: #859398; font-size: 10px; }
+        .auth-security-note svg { flex: 0 0 auto; color: #16856f; }
+        .auth-funding-note { margin: 17px 0 0; padding: 11px 12px; border: 1px solid #dff0eb; border-radius: 8px; background: #f2faf7; color: #47766a; font-size: 10px; line-height: 1.5; }
+        @media (max-width: 760px) {
+            .auth-overlay { place-items: start center; padding: 14px; }
+            .auth-card { width: min(480px, 100%); min-height: auto; grid-template-columns: 1fr; border-radius: 20px; }
+            .auth-visual { min-height: 245px; padding: 23px 25px; }
+            .auth-market-card { display: none; }
+            .auth-visual-copy { margin: auto 0 0; }
+            .auth-visual-title { margin: 14px 0 8px; font-size: 30px; }
+            .auth-visual-description { font-size: 11px; }
+            .auth-visual-foot { display: none; }
+            .auth-form-panel { padding: 30px 26px 28px; }
+            .auth-title { font-size: 26px; }
+            .auth-subtitle { margin-bottom: 20px; }
+            .auth-switch { margin-bottom: 17px; }
+        }
+        @media (max-width: 420px) {
+            .auth-overlay { padding: 0; }
+            .auth-card { min-height: 100vh; border: 0; border-radius: 0; }
+            .auth-visual { min-height: 215px; }
+            .auth-visual-title { font-size: 27px; }
+            .auth-form-panel { padding-right: 22px; padding-left: 22px; }
+        }
+        .auth-overlay { background: rgba(3, 7, 14, .88); }
+        .auth-card { border-color: #e2e8f0; background: #ffffff; color: #0f172a; box-shadow: 0 30px 90px rgba(0, 0, 0, .28); }
+        .auth-visual { background: radial-gradient(ellipse at 70% 20%, rgba(32, 172, 143, .25), transparent 34%), linear-gradient(145deg, #0b1728, #10243a 54%, #0c202a); }
+        .auth-form-panel { background: #ffffff; }
+        .auth-title { color: #0f172a; }
+        .auth-subtitle { color: #64748b; }
+        .auth-kicker { color: #16856f; }
+        .auth-switch { border-color: #e2e8f0; background: #f1f5f9; }
+        .auth-mode { color: #64748b; }
+        .auth-mode.active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 5px rgba(15, 23, 42, .12); }
+        .auth-label { color: #475569; }
+        .auth-field { border-color: #e2e8f0; background: #f8fafc; color: #0f172a; }
+        .auth-field::placeholder { color: #94a3b8; }
+        .auth-field:focus { border-color: #10b981; background: #ffffff; }
+        .auth-visibility { color: #64748b; }
+        .auth-visibility:hover { background: #f1f5f9; color: #047857; }
+        .auth-help, .auth-security-note { color: #64748b; }
+        .auth-funding-note { border-color: #d1fae5; background: #f0fdf4; color: #166534; }
+        .auth-security-note svg { color: #059669; }
 
         .app-shell { width: min(1640px, 100%); margin: 0 auto; padding: 22px 26px 34px; }
         .market-layout { display: grid; grid-template-columns: minmax(205px, 21fr) minmax(420px, 55fr) minmax(280px, 24fr); gap: 14px; align-items: stretch; }
@@ -75,21 +173,38 @@
         .panel-subtitle { margin-top: 5px; color: var(--muted); font-size: 10px; }
 
         .watchlist { padding: 16px 0 10px; }
-        .watchlist-head { display: flex; align-items: center; justify-content: space-between; padding: 0 15px 15px; }
+        .watchlist-head { display: flex; align-items: center; justify-content: space-between; padding: 0 15px 12px; }
         .watchlist-count { color: var(--dim); font-size: 10px; }
+        .watchlist-tools { display: grid; gap: 10px; padding: 0 12px 12px; }
+        .watch-search-wrap { position: relative; }
+        .watch-search { width: 100%; height: 36px; padding: 0 34px 0 34px; border: 1px solid #263244; border-radius: 8px; outline: 0; background: #0b1220; color: var(--text); font-size: 10px; }
+        .watch-search::placeholder { color: #64748b; }
+        .watch-search:focus { border-color: #178f72; box-shadow: 0 0 0 2px rgba(0, 192, 135, .1); }
+        .watch-search-icon { position: absolute; top: 50%; left: 11px; transform: translateY(-50%); color: #64748b; font-size: 13px; pointer-events: none; }
+        .watch-search-clear { position: absolute; top: 50%; right: 7px; width: 23px; height: 23px; transform: translateY(-50%); border: 0; border-radius: 6px; background: transparent; color: #94a3b8; font-size: 15px; cursor: pointer; }
+        .watch-search-clear:hover { background: #1e293b; color: #f1f5f9; }
+        .watch-filter-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 3px; padding: 3px; border: 1px solid #1e293b; border-radius: 8px; background: #0b1220; }
+        .watch-filter { min-width: 0; padding: 7px 3px; border: 0; border-radius: 6px; background: transparent; color: #8392a5; font-size: 9px; font-weight: 650; cursor: pointer; }
+        .watch-filter.active { background: #1e293b; color: #a5e8d0; }
+        .watchlist-grid { max-height: 570px; overflow-y: auto; overscroll-behavior: contain; scrollbar-color: #cbd5e1 transparent; scrollbar-width: thin; }
         .watch-row {
             display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; align-items: center;
             gap: 8px; padding: 12px 15px; border: 0; border-left: 2px solid transparent;
             background: transparent; text-align: left; cursor: pointer; transition: background .15s ease;
         }
         .watch-row:hover { background: var(--surface-hover); }
-        .watch-row.active { border-left-color: var(--green); background: #111d25; }
+        .watch-row.active { border-left-color: var(--green); background: #111d25; box-shadow: inset 0 0 0 1px rgba(0, 192, 135, .12); }
         .watch-symbol { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
         .watch-live { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
         .watch-company { overflow: hidden; margin-top: 4px; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
         .watch-quote { text-align: right; }
         .watch-price { color: #dce5ed; font-size: 11px; font-variant-numeric: tabular-nums; }
         .watch-change { margin-top: 4px; font-size: 9px; font-variant-numeric: tabular-nums; }
+        .watch-row .watch-symbol { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .watch-row.flash-up { animation: quoteFlashUp .7s ease-out; }
+        .watch-row.flash-down { animation: quoteFlashDown .7s ease-out; }
+        @keyframes quoteFlashUp { 0% { background: rgba(0, 192, 135, .17); } 100% { background: transparent; } }
+        @keyframes quoteFlashDown { 0% { background: rgba(255, 101, 119, .16); } 100% { background: transparent; } }
         .positive { color: var(--green); }
         .negative { color: var(--red); }
         .watch-note { margin: 14px 15px 0; color: var(--dim); font-size: 9px; line-height: 1.5; }
@@ -254,6 +369,77 @@
         .toast.visible { transform: translateY(0); opacity: 1; }
         .toast.error { border-color: #80414a; background: #2b1c22; color: #ffc2c8; }
 
+        .app-shell { color: #0f172a; }
+        .live-badge { color: #64748b; }
+        .provider-badge { border-color: #a7f3d0; background: #ecfdf5; color: #047857; }
+        .provider-badge.simulated { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+        .provider-badge.simulated::before { background: #3b82f6; box-shadow: none; }
+        .logout-button:hover { border-color: #eb5b3c; color: #d14b32; }
+        .panel { border-color: #e2e8f0; border-radius: 12px; background: #ffffff; box-shadow: 0 4px 18px rgba(15, 23, 42, .045); backdrop-filter: none; }
+        .watchlist-count, .watch-note, .market-tag, .field-label, .field-hint, .risk-note,
+        .summary-item, .chart-label, .chart-legend, .depth-symbol, .activity-meta { color: #64748b; }
+        .watch-search { border-color: #e2e8f0; background: #f8fafc; color: #0f172a; }
+        .watch-search:focus, .field:focus { border-color: #00d09c; box-shadow: 0 0 0 3px rgba(0, 208, 156, .12); }
+        .watch-search-clear:hover { background: #f1f5f9; color: #334155; }
+        .watch-filter-tabs { border-color: #e2e8f0; background: #f8fafc; }
+        .watch-filter { color: #64748b; }
+        .watch-filter.active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+        .watch-row:hover, .watch-row.active { background: #f8fafc; }
+        .watch-row.active { border-left-color: #00d09c; box-shadow: inset 0 0 0 1px rgba(0, 208, 156, .12); }
+        .watch-symbol, .instrument-symbol, .pad-title, .depth-title { color: #0f172a; }
+        .watch-company, .instrument-name { color: #64748b; font-size: 13px; }
+        .watch-price, .market-price { color: #0f172a; }
+        .positive { color: #00d09c; }
+        .negative { color: #eb5b3c; }
+        .exchange-tag { border-color: #e2e8f0; color: #64748b; }
+        .chart-hover-hud { color: #64748b; }
+        .chart-hover-hud strong { color: #334155; }
+        .market-price { font-weight: 700; }
+        .summary-item strong { color: #334155; }
+        .chart-toolbar { border-color: #e2e8f0; background: #ffffff; }
+        .timeframes { flex-wrap: wrap; gap: 4px; }
+        .timeframe { min-width: 34px; padding: 6px 9px; border: 1px solid transparent; border-radius: 999px; color: #64748b; font-size: 10px; }
+        .timeframe.active, .timeframe:hover { border-color: #cbd5e1; background: #f1f5f9; color: #0f172a; }
+        .chart-type-toggle { border-color: #e2e8f0; background: #f8fafc; }
+        .chart-type-button { color: #64748b; }
+        .chart-type-button.active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+        .legend-line { background: #00d09c; box-shadow: none; }
+        .segmented { border-color: #e2e8f0; background: #f8fafc; }
+        .segment-btn { color: #64748b; }
+        .segment-btn.selected.buy, .segment-btn.selected.sell { border-bottom: 2px solid #00d09c; border-radius: 6px 6px 0 0; background: #ffffff; color: #008f6b; }
+        .segment-btn.selected.neutral { background: #e2e8f0; color: #0f172a; }
+        .product-tabs { gap: 7px; }
+        .product-tab { padding: 7px 12px; border: 1px solid #e2e8f0; border-radius: 999px; background: #ffffff; color: #64748b; }
+        .product-tab.active { border-color: #d1fae5; background: #e8fbf5; color: #008f6b; }
+        .field { border-color: #e2e8f0; border-radius: 8px; background: #ffffff; color: #0f172a; font-weight: 650; }
+        .field:disabled { background: #f8fafc; color: #64748b; }
+        .quick-chip { border-color: #e2e8f0; background: #ffffff; color: #475569; }
+        .quick-chip:hover { border-color: #00d09c; color: #008f6b; }
+        .order-value { border-color: #e2e8f0; }
+        .order-value strong, .available-line strong { color: #0f172a; }
+        .submit-order, .submit-order.sell { background: #00d09c; color: #ffffff; }
+        .submit-order:hover { filter: brightness(.96); }
+        .depth-table-head { color: #64748b; }
+        .depth-side-head.bid, .depth-rows.bids .depth-row, .depth-total.bid { color: #008f6b; }
+        .depth-side-head.ask, .depth-rows.asks .depth-row, .depth-total.ask { color: #d14b32; }
+        .activity-top { border-color: #e2e8f0; }
+        .activity-tab { color: #64748b; }
+        .activity-tab.active { color: #0f172a; }
+        .orders-table th { background: #f8fafc; color: #64748b; }
+        .orders-table td { border-color: #e2e8f0; color: #334155; }
+        .orders-table tbody tr:hover { background: #f8fafc; }
+        .side-pill.buy, .status-pill.filled { background: #e8fbf5; color: #008f6b; }
+        .side-pill.sell, .status-pill.rejected { background: #fff0ed; color: #d14b32; }
+        .status-pill.pending { background: #fff7e6; color: #946200; }
+        .status-pill.cancelled { background: #f1f5f9; color: #475569; }
+        .pnl-badge.positive { border-color: #c6f6e5; background: #e8fbf5; color: #008f6b; }
+        .pnl-badge.negative { border-color: #fbd5cd; background: #fff0ed; color: #d14b32; }
+        .exit-button, .cancel-button { border-color: #f3c8bf; background: #fff7f5; color: #d14b32; }
+        .holding-metric { background: #ffffff; }
+        .holding-metric-value { color: #0f172a; }
+        .toast { border-color: #a7f3d0; background: #f0fdf4; color: #166534; box-shadow: 0 12px 35px rgba(15, 23, 42, .12); }
+        .toast.error { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
+
         @media (max-width: 1180px) {
             .topbar { gap: 17px; padding: 0 18px; }
             .indices { gap: 16px; }
@@ -275,6 +461,7 @@
             .topbar { min-height: 60px; padding: 9px 12px; }
             .brand-name { font-size: 15px; }
             .live-badge { font-size: 8px; }
+            .provider-badge { padding: 4px 7px; font-size: 7px; }
             .wallet-chip { padding: 6px 9px; }
             .wallet-amount { font-size: 10px; }
             .app-shell { padding: 10px; }
@@ -289,6 +476,11 @@
             .market-price { font-size: 20px; }
             .market-summary { gap: 12px; padding: 0 14px 12px; }
             #chart { height: 270px; }
+            .chart-toolbar { align-items: flex-start; flex-direction: column; gap: 8px; }
+            .chart-controls { width: 100%; flex-wrap: wrap; justify-content: space-between; gap: 7px; }
+            .timeframes { flex: 1 1 100%; justify-content: space-between; gap: 1px; }
+            .timeframe { min-width: 0; padding: 5px 6px; }
+            .chart-type-toggle { margin-left: auto; }
             .activity-top { align-items: flex-start; flex-direction: column; gap: 0; padding: 0 13px; }
             .activity-tabs { width: 100%; justify-content: space-between; gap: 10px; }
             .activity-meta { padding-bottom: 10px; }
@@ -322,6 +514,8 @@
             <span id="headerAaplPrice" class="index-value">—</span>
             <span id="headerAaplChange" class="index-change">Live</span>
         </div>
+        <span id="marketProviderBadge" class="provider-badge simulated"
+              title="Market data source">SIMULATED</span>
     </div>
 
     <div class="header-spacer"></div>
@@ -329,7 +523,11 @@
         <span class="wallet-label">Available cash</span>
         <span id="walletAvailable" class="wallet-amount">Loading…</span>
     </div>
-    <div class="profile" title="Demo user">DU</div>
+    <div id="profileControl" class="profile-control" hidden>
+        <div id="profileInitial" class="profile" aria-hidden="true">TP</div>
+        <span id="profileName" class="profile-name"></span>
+        <button id="logoutButton" class="logout-button" type="button">Logout</button>
+    </div>
 </header>
 
 <main class="app-shell">
@@ -337,7 +535,16 @@
         <aside class="panel watchlist">
             <div class="watchlist-head">
                 <h2 class="panel-title">Watchlist</h2>
-                <span class="watchlist-count">5 instruments</span>
+                <span id="watchlistCount" class="watchlist-count">9 instruments</span>
+            </div>
+            <div class="watchlist-tools">
+                <div class="watch-search-wrap">
+                    <span class="watch-search-icon" aria-hidden="true">⌕</span>
+                    <input id="watchSearch" class="watch-search" type="search"
+                           placeholder="Search symbols or companies" aria-label="Search watchlist">
+                    <button id="watchSearchClear" class="watch-search-clear" type="button"
+                            aria-label="Clear watchlist search" hidden>×</button>
+                </div>
             </div>
             <div id="watchlistItems" class="watchlist-grid"></div>
             <p class="watch-note">Live prices update across the watchlist. Orders are matched per instrument.</p>
@@ -367,22 +574,27 @@
                 <span class="summary-item">Day low<strong id="dayLow">—</strong></span>
                 <span class="summary-item">Market<strong id="quoteSource">Live feed</strong></span>
             </div>
+            <div id="chart"></div>
             <div class="chart-toolbar">
                 <span id="chartPeriodLabel" class="chart-label">AAPL · Intraday</span>
                 <div class="chart-controls">
                     <div class="timeframes" aria-label="Chart timeframe">
-                        <button class="timeframe active" type="button" data-timeframe="1S">1S</button>
-                        <button class="timeframe" type="button" data-timeframe="5S">5S</button>
+                        <button class="timeframe active" type="button" data-timeframe="1D">1D</button>
+                        <button class="timeframe" type="button" data-timeframe="1W">1W</button>
                         <button class="timeframe" type="button" data-timeframe="1M">1M</button>
-                        <button class="timeframe" type="button" data-timeframe="1D">1D</button>
+                        <button class="timeframe" type="button" data-timeframe="3M">3M</button>
+                        <button class="timeframe" type="button" data-timeframe="6M">6M</button>
+                        <button class="timeframe" type="button" data-timeframe="1Y">1Y</button>
+                        <button class="timeframe" type="button" data-timeframe="3Y">3Y</button>
+                        <button class="timeframe" type="button" data-timeframe="5Y">5Y</button>
+                        <button class="timeframe" type="button" data-timeframe="All">All</button>
                     </div>
                     <div class="chart-type-toggle" role="group" aria-label="Chart type">
                         <button id="lineChartButton" class="chart-type-button active" type="button" aria-pressed="true">Line</button>
-                        <button id="candleChartButton" class="chart-type-button" type="button" aria-pressed="false">Candles</button>
+                        <button id="candleChartButton" class="chart-type-button" type="button" aria-pressed="false">Candle</button>
                     </div>
                 </div>
             </div>
-            <div id="chart"></div>
             <div class="chart-legend"><span class="legend-line"></span><span>Price · INR</span><span>Volume</span></div>
         </section>
 
@@ -517,18 +729,106 @@
     </section>
 </main>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="authOverlay" class="auth-overlay" role="dialog" aria-modal="true" aria-labelledby="authTitle" hidden>
+    <section class="auth-card">
+        <aside class="auth-visual" aria-label="TradePulse market overview">
+            <div class="auth-brand">
+                <span class="brand-mark">T</span>
+                <span class="brand-name">TradePulse</span>
+            </div>
+            <div class="auth-market-card" aria-label="Sample market snapshot">
+                <div class="auth-market-head">
+                    <div>
+                        <span class="auth-market-label">NIFTY 50 · Market snapshot</span>
+                        <strong class="auth-market-price">24,180.50</strong>
+                    </div>
+                    <span class="auth-market-change">+0.45%</span>
+                </div>
+                <svg class="auth-chart" viewBox="0 0 420 130" preserveAspectRatio="none" role="img" aria-label="Illustrative rising market chart">
+                    <defs>
+                        <linearGradient id="authChartFill" x1="0" x2="0" y1="0" y2="1">
+                            <stop offset="0" stop-color="#65dfbd" stop-opacity=".28"/>
+                            <stop offset="1" stop-color="#65dfbd" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M0 105 L28 94 L52 99 L78 73 L103 82 L132 61 L157 70 L184 48 L211 57 L237 34 L266 45 L292 28 L320 39 L348 15 L375 24 L399 8 L420 13 L420 130 L0 130Z" fill="url(#authChartFill)"/>
+                    <path d="M0 105 L28 94 L52 99 L78 73 L103 82 L132 61 L157 70 L184 48 L211 57 L237 34 L266 45 L292 28 L320 39 L348 15 L375 24 L399 8 L420 13" fill="none" stroke="#76ddc2" stroke-width="2.5" vector-effect="non-scaling-stroke"/>
+                    <path d="M0 112 H420 M0 75 H420 M0 38 H420" stroke="#d3f0e9" stroke-opacity=".12" stroke-dasharray="3 6"/>
+                    <circle cx="399" cy="8" r="4" fill="#b5f6df"/>
+                </svg>
+            </div>
+            <div class="auth-visual-copy">
+                <span class="auth-eyebrow">A clearer view of the market</span>
+                <h2 class="auth-visual-title">Trade with focus.<br><span>Grow with confidence.</span></h2>
+                <p class="auth-visual-description">One professional workspace for live markets, thoughtful decisions, and your own private portfolio.</p>
+            </div>
+            <div class="auth-visual-foot">Market data shown for illustration. Trading involves risk.</div>
+        </aside>
+        <div class="auth-form-panel">
+            <div class="auth-form-content">
+                <p id="authKicker" class="auth-kicker">Your trading workspace</p>
+                <h1 id="authTitle" class="auth-title">Welcome back</h1>
+                <p id="authSubtitle" class="auth-subtitle">Sign in to securely access your portfolio and trading account.</p>
+                <div class="auth-switch" role="tablist" aria-label="Authentication mode">
+                    <button id="loginMode" class="auth-mode active" type="button" role="tab" aria-selected="true">Sign in</button>
+                    <button id="registerMode" class="auth-mode" type="button" role="tab" aria-selected="false">Create account</button>
+                </div>
+                <form id="authForm">
+                    <label id="authFullNameLabel" class="auth-label" for="authFullName" hidden>Full name</label>
+                    <input id="authFullName" class="auth-field" type="text" autocomplete="name"
+                           placeholder="e.g. Aanya Sharma" maxlength="100" hidden>
+
+                    <label class="auth-label" for="authEmail">Email address</label>
+                    <input id="authEmail" class="auth-field" type="email" autocomplete="email"
+                           placeholder="you@example.com" maxlength="254" required>
+
+                    <label id="authPasswordLabel" class="auth-label" for="authPassword">Password</label>
+                    <div class="auth-input-wrap">
+                        <input id="authPassword" class="auth-field" type="password" autocomplete="current-password"
+                               placeholder="Enter your password" minlength="8" maxlength="72" required>
+                        <button id="authPasswordVisibility" class="auth-visibility" type="button"
+                                aria-label="Show password" aria-pressed="false">Show</button>
+                    </div>
+                    <p id="authPasswordHelp" class="auth-help" hidden>Use 8–72 characters. Choose a password you do not use elsewhere.</p>
+
+                    <label id="authConfirmLabel" class="auth-label" for="authConfirmPassword" hidden>Confirm password</label>
+                    <div id="authConfirmWrap" class="auth-input-wrap" hidden>
+                        <input id="authConfirmPassword" class="auth-field" type="password" autocomplete="new-password"
+                               placeholder="Re-enter your password" minlength="8" maxlength="72">
+                        <button id="authConfirmVisibility" class="auth-visibility" type="button"
+                                aria-label="Show confirmation password" aria-pressed="false">Show</button>
+                    </div>
+                    <p id="authError" class="auth-error" role="alert" aria-live="polite"></p>
+                    <button id="authSubmit" class="auth-submit" type="submit">Sign in securely</button>
+                    <p id="authFundingNote" class="auth-funding-note" hidden>Your new account includes a private virtual INR wallet funded with ₹1,00,000.</p>
+                </form>
+                <p class="auth-security-note">
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M8 1.5 13 3.5v4.1c0 3.2-2.1 5.7-5 6.9-2.9-1.2-5-3.7-5-6.9V3.5l5-2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                        <path d="m5.7 7.8 1.5 1.5 3.2-3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Protected with encrypted sign-in and private account data
+                </p>
+            </div>
+        </div>
+    </section>
+</div>
 
 <script>
     (() => {
         'use strict';
 
-        const USER_ID = 'demo-user';
+        const AUTH_TOKEN_KEY = 'tradepulse_token';
         const instruments = {
-            AAPL: { name: 'Apple Inc.', exchange: 'NASDAQ', price: 2475, reference: 2475, change: 0, live: true },
-            NVDA: { name: 'NVIDIA Corporation', exchange: 'NASDAQ', price: 1180, reference: 1180, change: 0, live: true },
-            MSFT: { name: 'Microsoft Corporation', exchange: 'NASDAQ', price: 820, reference: 820, change: 0, live: true },
-            RELIANCE: { name: 'Reliance Industries', exchange: 'NSE', price: 1460, reference: 1460, change: 0, live: true },
-            INFY: { name: 'Infosys Limited', exchange: 'NSE', price: 1580, reference: 1580, change: 0, live: true }
+            AAPL: { name: 'Apple Inc.', category: 'STOCKS', exchange: 'NASDAQ', price: 2475, reference: 2475, change: 0, live: true },
+            NVDA: { name: 'NVIDIA Corporation', category: 'STOCKS', exchange: 'NASDAQ', price: 1180, reference: 1180, change: 0, live: true },
+            MSFT: { name: 'Microsoft Corporation', category: 'STOCKS', exchange: 'NASDAQ', price: 820, reference: 820, change: 0, live: true },
+            TSLA: { name: 'Tesla Inc.', category: 'STOCKS', exchange: 'NASDAQ', price: 245, reference: 245, change: 0, live: true },
+            AMZN: { name: 'Amazon.com Inc.', category: 'STOCKS', exchange: 'NASDAQ', price: 185, reference: 185, change: 0, live: true },
+            GOOGL: { name: 'Alphabet Inc.', category: 'STOCKS', exchange: 'NASDAQ', price: 175, reference: 175, change: 0, live: true },
+            'BINANCE:BTCUSDT': { name: 'Bitcoin / Tether', category: 'CRYPTO', exchange: 'BINANCE', price: 60000, reference: 60000, change: 0, live: true },
+            'BINANCE:ETHUSDT': { name: 'Ethereum / Tether', category: 'CRYPTO', exchange: 'BINANCE', price: 3000, reference: 3000, change: 0, live: true },
+            'BINANCE:SOLUSDT': { name: 'Solana / Tether', category: 'CRYPTO', exchange: 'BINANCE', price: 150, reference: 150, change: 0, live: true }
         };
         const currencyFormat = new Intl.NumberFormat('en-IN', {
             style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2
@@ -552,8 +852,17 @@
         let tickCount = 0;
         let dayHigh = 0;
         let dayLow = Number.POSITIVE_INFINITY;
+        let activeMarketProvider = null;
+        let chartLoadGeneration = 0;
+        let chartDataSymbol = 'AAPL';
+        let watchlistQuery = '';
         let lastOrders = [];
         let holdings = [];
+        let authToken = null;
+        let currentUser = null;
+        let isRegisterMode = false;
+        let logoutInProgress = false;
+        let marketSocket;
 
         const el = id => document.getElementById(id);
         function initializeDepthRows() {
@@ -630,31 +939,32 @@
         const chart = LightweightCharts.createChart(chartElement, {
             width: chartElement.clientWidth,
             height: chartElement.clientHeight,
-            layout: { background: { color: '#0c0f17' }, textColor: '#7f8d9c', fontFamily: 'Inter, sans-serif' },
-            grid: { vertLines: { color: '#171f29' }, horzLines: { color: '#171f29' } },
-            rightPriceScale: { borderColor: '#202a36', scaleMargins: { top: .12, bottom: .1 } },
-            timeScale: { timeVisible: true, secondsVisible: true, borderColor: '#202a36', rightOffset: 3 },
+            layout: { background: { color: '#ffffff' }, textColor: '#64748b', fontFamily: 'Inter, sans-serif' },
+            grid: { vertLines: { color: '#f1f5f9' }, horzLines: { color: '#f1f5f9' } },
+            rightPriceScale: { borderColor: '#e2e8f0', scaleMargins: { top: .12, bottom: .1 } },
+            timeScale: { timeVisible: true, secondsVisible: false, borderColor: '#e2e8f0', barSpacing: 8, minBarSpacing: 4, rightOffset: 5 },
             crosshair: {
-                vertLine: { color: '#64748b', style: 1, labelBackgroundColor: '#263541' },
-                horzLine: { color: '#64748b', style: 1, labelBackgroundColor: '#263541' }
+                vertLine: { color: '#94a3b8', style: 1, labelBackgroundColor: '#334155' },
+                horzLine: { color: '#94a3b8', style: 1, labelBackgroundColor: '#334155' }
             }
         });
+        chart.timeScale().applyOptions({ barSpacing: 8, minBarSpacing: 4, rightOffset: 5 });
         const lineSeries = chart.addAreaSeries({
-            lineColor: '#00c087',
+            lineColor: '#00d09c',
             lineWidth: 2,
-            topColor: 'rgba(0, 192, 135, .24)',
-            bottomColor: 'rgba(0, 192, 135, .015)',
-            priceLineColor: '#00c087',
+            topColor: 'rgba(0, 208, 156, .18)',
+            bottomColor: 'rgba(0, 208, 156, .01)',
+            priceLineColor: '#00d09c',
             priceLineWidth: 1,
             visible: true
         });
         const candleSeries = chart.addCandlestickSeries({
-            upColor: '#10b981',
-            downColor: '#ef4444',
-            borderUpColor: '#10b981',
-            borderDownColor: '#ef4444',
-            wickUpColor: '#10b981',
-            wickDownColor: '#ef4444',
+            upColor: '#00d09c',
+            downColor: '#eb5b3c',
+            borderUpColor: '#00d09c',
+            borderDownColor: '#eb5b3c',
+            wickUpColor: '#00d09c',
+            wickDownColor: '#eb5b3c',
             visible: false
         });
         const volumeSeries = chart.addHistogramSeries({
@@ -665,6 +975,8 @@
         });
         const candleDataByTime = new Map();
         const volumeDataByTime = new Map();
+        const providerSessionOpenBySymbol = new Map();
+        let latestChartBarTime = null;
         chart.priceScale('').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
 
         chart.subscribeCrosshairMove(param => {
@@ -708,7 +1020,14 @@
         function renderWatchlist() {
             const container = el('watchlistItems');
             container.replaceChildren();
-            Object.entries(instruments).forEach(([symbol, instrument]) => {
+            const query = watchlistQuery.trim().toLocaleLowerCase();
+            const filteredInstruments = Object.entries(instruments).filter(([symbol, instrument]) =>
+                !query || symbol.toLocaleLowerCase().includes(query)
+                    || instrument.name.toLocaleLowerCase().includes(query)
+                    || instrument.category.toLocaleLowerCase().includes(query));
+            el('watchlistCount').textContent = filteredInstruments.length + ' of '
+                + Object.keys(instruments).length + ' instruments';
+            filteredInstruments.forEach(([symbol, instrument]) => {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'watch-row' + (symbol === selectedSymbol ? ' active' : '');
@@ -777,49 +1096,98 @@
             updateInstrumentHeader();
             el('orderPrice').value = instruments[symbol].price.toFixed(2);
             updateOrderValue();
-            seedChart(instruments[symbol].price);
+            loadHistoricalCandles(symbol);
             syncTickSubscriptions();
         }
 
-        function seedChart(price) {
-            const bucketSeconds = 5;
-            const currentBucket = Math.floor(Date.now() / 1000 / bucketSeconds) * bucketSeconds;
-            const candles = [];
-            const line = [];
-            const volumes = [];
+        function applyChartCandles(candles, fitContent) {
             candleDataByTime.clear();
             volumeDataByTime.clear();
-            let previousClose = price * .997;
-            for (let index = 44; index >= 0; index--) {
-                const open = previousClose;
-                const close = Math.max(.01, open + (Math.random() - .48) * price * .00045);
-                const high = Math.max(open, close) + Math.random() * price * .00012;
-                const low = Math.max(.01, Math.min(open, close) - Math.random() * price * .00012);
-                const time = currentBucket - (index + 1) * bucketSeconds;
-                const candle = {
-                    time,
-                    open: Number(open.toFixed(2)),
-                    high: Number(high.toFixed(2)),
-                    low: Number(low.toFixed(2)),
-                    close: Number(close.toFixed(2))
-                };
-                const isUp = candle.close >= candle.open;
-                candles.push(candle);
-                candleDataByTime.set(time, candle);
-                line.push({ time, value: candle.close });
-                const volume = Math.round(500 + Math.random() * 3500);
-                volumeDataByTime.set(time, volume);
-                volumes.push({
-                    time,
-                    value: volume,
-                    color: isUp ? 'rgba(16, 185, 129, .58)' : 'rgba(239, 68, 68, .58)'
-                });
-                previousClose = close;
-            }
+            const orderedCandles = candles
+                .sort((left, right) => left.time - right.time)
+                .slice(-150);
+            orderedCandles.forEach(candle => {
+                candleDataByTime.set(candle.time, candle);
+                volumeDataByTime.set(candle.time, candle.volume);
+            });
+            const line = orderedCandles.map(candle => ({ time: candle.time, value: candle.close }));
+            const volumes = orderedCandles.map(candle => ({
+                time: candle.time,
+                value: candle.volume,
+                color: candle.close >= candle.open
+                    ? 'rgba(0, 208, 156, .48)'
+                    : 'rgba(235, 91, 60, .42)'
+            }));
             lineSeries.setData(line);
-            candleSeries.setData(candles);
+            candleSeries.setData(orderedCandles.map(({ time, open, high, low, close }) =>
+                ({ time, open, high, low, close })));
             volumeSeries.setData(volumes);
-            chart.timeScale().fitContent();
+            latestChartBarTime = orderedCandles.length
+                ? orderedCandles[orderedCandles.length - 1].time
+                : null;
+            if (fitContent) chart.timeScale().fitContent();
+        }
+
+        async function loadHistoricalCandles(symbol) {
+            const requestGeneration = ++chartLoadGeneration;
+            const preserveLiveCandles = chartDataSymbol === symbol;
+            chartDataSymbol = symbol;
+            if (!preserveLiveCandles) {
+                candleDataByTime.clear();
+                volumeDataByTime.clear();
+                latestChartBarTime = null;
+                lineSeries.setData([]);
+                candleSeries.setData([]);
+                volumeSeries.setData([]);
+            }
+            try {
+                const candles = await apiRequest('/api/market/candles?symbol='
+                    + encodeURIComponent(symbol) + '&interval=1m');
+                if (!Array.isArray(candles)) {
+                    throw new Error('Historical market data response must be a candle list.');
+                }
+                if (requestGeneration !== chartLoadGeneration || selectedSymbol !== symbol) return;
+                const mergedCandles = new Map();
+                candles.forEach(candle => {
+                    const time = Number(candle.time);
+                    const open = Number(candle.open);
+                    const high = Number(candle.high);
+                    const low = Number(candle.low);
+                    const close = Number(candle.close);
+                    const volume = Number(candle.volume);
+                    if ([time, open, high, low, close, volume].every(Number.isFinite)) {
+                        mergedCandles.set(time, { time, open, high, low, close, volume });
+                    }
+                });
+                const liveCandles = new Map(candleDataByTime);
+                const liveVolumes = new Map(volumeDataByTime);
+                liveCandles.forEach((candle, time) => {
+                    mergedCandles.set(time, {
+                        ...candle,
+                        volume: liveVolumes.get(time) || candle.volume || 0
+                    });
+                });
+                applyChartCandles([...mergedCandles.values()], true);
+            } catch (error) {
+                if (requestGeneration === chartLoadGeneration) {
+                    console.error('Could not load historical candles for ' + symbol + ':', error);
+                }
+            }
+        }
+
+        function resetMarketDataSession(provider) {
+            activeMarketProvider = provider;
+            providerSessionOpenBySymbol.clear();
+            chartDataSymbol = null;
+            Object.keys(instruments).forEach(symbol => {
+                instruments[symbol].reference = instruments[symbol].price;
+                instruments[symbol].change = 0;
+            });
+            dayHigh = 0;
+            dayLow = Number.POSITIVE_INFINITY;
+            renderWatchlist();
+            updateInstrumentHeader();
+            loadHistoricalCandles(selectedSymbol);
         }
 
         function updateQuote(symbol, tick) {
@@ -827,33 +1195,88 @@
             const price = Number(tick.price);
             if (!instrument || !Number.isFinite(price) || price <= 0) return;
             const previousPrice = instrument.price;
+            const firstProviderQuote = !providerSessionOpenBySymbol.has(symbol);
+            const priceDiscontinuity = previousPrice > 0
+                && Math.abs(price - previousPrice) / previousPrice >= .15;
+            if (firstProviderQuote || priceDiscontinuity) {
+                const reportedSessionOpen = Number(tick.sessionOpen || tick.dayOpen);
+                const sessionOpen = Number.isFinite(reportedSessionOpen) && reportedSessionOpen > 0
+                    ? reportedSessionOpen
+                    : price;
+                providerSessionOpenBySymbol.set(symbol, sessionOpen);
+                instrument.reference = sessionOpen;
+            }
             instrument.price = price;
-            instrument.change = ((price - instrument.reference) / instrument.reference) * 100;
+            instrument.change = instrument.reference > 0
+                ? ((price - instrument.reference) / instrument.reference) * 100
+                : 0;
             if (symbol === selectedSymbol) {
                 tickCount++;
                 dayHigh = Math.max(dayHigh || price, price);
                 dayLow = Math.min(dayLow, price);
                 updateInstrumentHeader();
-                const barTime = Number.isFinite(Number(tick.barTime))
-                    ? Number(tick.barTime)
-                    : Math.floor(Date.now() / 5000) * 5;
-                const open = Number.isFinite(Number(tick.open)) ? Number(tick.open) : price;
-                const high = Number.isFinite(Number(tick.high)) ? Number(tick.high) : price;
-                const low = Number.isFinite(Number(tick.low)) ? Number(tick.low) : price;
-                const close = Number.isFinite(Number(tick.close)) ? Number(tick.close) : price;
-                const volume = Number.isFinite(Number(tick.volume))
-                    ? Number(tick.volume)
-                    : Number(tick.tickVolume || 0);
-                const candle = { time: barTime, open, high, low, close };
-                candleDataByTime.set(barTime, candle);
+                const timestampValue = tick.timestamp;
+                const timestampMillis = typeof timestampValue === 'number'
+                    ? (timestampValue > 1e12 ? timestampValue : timestampValue * 1000)
+                    : Date.parse(timestampValue);
+                const tickSeconds = Number.isFinite(timestampMillis)
+                    ? Math.floor(timestampMillis / 1000)
+                    : Math.floor(Date.now() / 1000);
+                const barTime = Math.floor(tickSeconds / 60) * 60;
+                const previousCandle = candleDataByTime.get(barTime);
+                const tickVolume = Number.isFinite(Number(tick.tickVolume))
+                    ? Number(tick.tickVolume)
+                    : 0;
+                const tickOpen = Number(tick.open);
+                const tickHigh = Number(tick.high);
+                const tickLow = Number(tick.low);
+                const tickClose = Number(tick.close);
+                const candle = previousCandle
+                    ? {
+                        time: barTime,
+                        open: previousCandle.open,
+                        high: Math.max(previousCandle.high,
+                            Number.isFinite(tickHigh) ? tickHigh : price, price),
+                        low: Math.min(previousCandle.low,
+                            Number.isFinite(tickLow) ? tickLow : price, price),
+                        close: Number.isFinite(tickClose) ? tickClose : price
+                    }
+                    : {
+                        time: barTime,
+                        open: Number.isFinite(tickOpen) ? tickOpen : price,
+                        high: Number.isFinite(tickHigh) ? tickHigh : price,
+                        low: Number.isFinite(tickLow) ? tickLow : price,
+                        close: Number.isFinite(tickClose) ? tickClose : price
+                    };
+                const reportedVolume = Number(tick.volume);
+                const volume = Number.isFinite(reportedVolume)
+                    ? reportedVolume
+                    : (volumeDataByTime.get(barTime) || 0) + tickVolume;
+                candleDataByTime.set(barTime, { ...candle, volume });
                 volumeDataByTime.set(barTime, volume);
-                lineSeries.update({ time: barTime, value: close });
-                candleSeries.update(candle);
-                volumeSeries.update({
-                    time: barTime,
-                    value: volume,
-                    color: close >= open ? 'rgba(16, 185, 129, .58)' : 'rgba(239, 68, 68, .58)'
-                });
+                let historyTrimmed = false;
+                while (candleDataByTime.size > 150) {
+                    const oldestTime = Math.min(...candleDataByTime.keys());
+                    candleDataByTime.delete(oldestTime);
+                    volumeDataByTime.delete(oldestTime);
+                    historyTrimmed = true;
+                }
+                const sortedCandles = [...candleDataByTime.values()]
+                    .sort((left, right) => left.time - right.time);
+                if (historyTrimmed || (latestChartBarTime != null && barTime < latestChartBarTime)) {
+                    applyChartCandles(sortedCandles, false);
+                } else {
+                    lineSeries.update({ time: barTime, value: candle.close });
+                    candleSeries.update(candle);
+                    volumeSeries.update({
+                        time: barTime,
+                        value: volume,
+                        color: candle.close >= candle.open
+                            ? 'rgba(0, 208, 156, .48)'
+                            : 'rgba(235, 91, 60, .42)'
+                    });
+                    latestChartBarTime = barTime;
+                }
             }
             if (symbol === 'AAPL') {
                 el('headerAaplPrice').textContent = currencyFormat.format(price);
@@ -913,6 +1336,189 @@
             el('candleChartButton').setAttribute('aria-pressed', String(!isLine));
         }
 
+        function setAuthMode(registerMode) {
+            isRegisterMode = registerMode;
+            el('loginMode').classList.toggle('active', !registerMode);
+            el('loginMode').setAttribute('aria-selected', String(!registerMode));
+            el('registerMode').classList.toggle('active', registerMode);
+            el('registerMode').setAttribute('aria-selected', String(registerMode));
+            el('authFullName').hidden = !registerMode;
+            el('authFullNameLabel').hidden = !registerMode;
+            el('authFullName').required = registerMode;
+            el('authConfirmLabel').hidden = !registerMode;
+            el('authConfirmWrap').hidden = !registerMode;
+            el('authConfirmPassword').required = registerMode;
+            el('authPasswordHelp').hidden = !registerMode;
+            el('authFundingNote').hidden = !registerMode;
+            el('authPassword').autocomplete = registerMode ? 'new-password' : 'current-password';
+            el('authConfirmPassword').value = '';
+            el('authPassword').type = 'password';
+            el('authConfirmPassword').type = 'password';
+            el('authPasswordVisibility').textContent = 'Show';
+            el('authPasswordVisibility').setAttribute('aria-label', 'Show password');
+            el('authPasswordVisibility').setAttribute('aria-pressed', 'false');
+            el('authConfirmVisibility').textContent = 'Show';
+            el('authConfirmVisibility').setAttribute('aria-label', 'Show confirmation password');
+            el('authConfirmVisibility').setAttribute('aria-pressed', 'false');
+            el('authKicker').textContent = registerMode ? 'Start investing in your future' : 'Your trading workspace';
+            el('authTitle').textContent = registerMode ? 'Create your account' : 'Welcome back';
+            el('authSubtitle').textContent = registerMode
+                ? 'Set up your secure profile and get started with your private trading wallet.'
+                : 'Sign in to securely access your portfolio and trading account.';
+            el('authSubmit').textContent = registerMode ? 'Create secure account' : 'Sign in securely';
+            el('authError').textContent = '';
+        }
+
+        function showAuthModal(message) {
+            el('authOverlay').hidden = false;
+            el('profileControl').hidden = true;
+            el('authError').textContent = message || '';
+            el('authEmail').focus({ preventScroll: true });
+        }
+
+        function hideAuthModal() {
+            el('authOverlay').hidden = true;
+            el('authForm').reset();
+            setAuthMode(false);
+        }
+
+        function updateProfile(user) {
+            const name = String(user.fullName || user.email || 'Trader').trim();
+            const initial = name.split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join('').toUpperCase();
+            el('profileInitial').textContent = initial || 'TP';
+            el('profileName').textContent = name;
+            el('profileControl').hidden = false;
+        }
+
+        function clearPrivateState() {
+            if (orderTopicSubscription) {
+                orderTopicSubscription.unsubscribe();
+                orderTopicSubscription = null;
+            }
+            if (stompClient && stompClient.connected) {
+                const client = stompClient;
+                stompClient = null;
+                client.disconnect(() => {});
+            } else {
+                stompClient = null;
+            }
+            if (marketSocket) {
+                marketSocket.close();
+                marketSocket = null;
+            }
+            authToken = null;
+            currentUser = null;
+            lastOrders = [];
+            holdings = [];
+            availableBalance = 0;
+            lockedBalance = 0;
+            renderOrders();
+            el('walletAvailable').textContent = '—';
+            el('padAvailable').textContent = '—';
+            el('profileControl').hidden = true;
+        }
+
+        function handleUnauthorized() {
+            if (logoutInProgress) return;
+            logoutInProgress = true;
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            clearPrivateState();
+            showAuthModal('Your session expired. Please sign in again.');
+            logoutInProgress = false;
+        }
+
+        async function startAuthenticatedSession(session) {
+            if (!session || typeof session.token !== 'string'
+                || !session.user || !session.user.id) {
+                throw new Error('The server returned an invalid authentication response.');
+            }
+            authToken = session.token;
+            currentUser = session.user;
+            localStorage.setItem(AUTH_TOKEN_KEY, authToken);
+            updateProfile(currentUser);
+            hideAuthModal();
+            const results = await Promise.allSettled([refreshWallet(), refreshOrders(), fetchHoldings()]);
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    console.error(['Wallet', 'Orders', 'Holdings'][index] + ' load failed:', result.reason);
+                }
+            });
+            connectMarketFeed();
+        }
+
+        async function restoreSession() {
+            authToken = localStorage.getItem(AUTH_TOKEN_KEY);
+            if (!authToken) {
+                showAuthModal();
+                return;
+            }
+            try {
+                const profile = await apiRequest('/api/auth/me');
+                if (!profile || !profile.id) throw new Error('Invalid profile response.');
+                currentUser = profile;
+                updateProfile(profile);
+                hideAuthModal();
+                const results = await Promise.allSettled([refreshWallet(), refreshOrders(), fetchHoldings()]);
+                results.forEach((result, index) => {
+                    if (result.status === 'rejected') {
+                        console.error(['Wallet', 'Orders', 'Holdings'][index] + ' load failed:', result.reason);
+                    }
+                });
+                connectMarketFeed();
+            } catch (error) {
+                console.error('Could not restore TradePulse session:', error);
+                if (authToken && currentUser) return;
+                if (authToken) {
+                    showAuthModal('Could not validate your session. Sign in again or retry when the service is available.');
+                }
+            }
+        }
+
+        async function submitAuth(event) {
+            event.preventDefault();
+            const button = el('authSubmit');
+            button.disabled = true;
+            el('authError').textContent = '';
+            const password = el('authPassword').value;
+            if (isRegisterMode && password !== el('authConfirmPassword').value) {
+                el('authError').textContent = 'Your passwords do not match.';
+                el('authConfirmPassword').focus();
+                button.disabled = false;
+                return;
+            }
+            const payload = {
+                email: el('authEmail').value.trim(),
+                password
+            };
+            if (isRegisterMode) payload.fullName = el('authFullName').value.trim();
+            try {
+                const session = await apiRequest(
+                    isRegisterMode ? '/api/auth/register' : '/api/auth/login',
+                    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                await startAuthenticatedSession(session);
+            } catch (error) {
+                el('authError').textContent = error.message;
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        function togglePasswordVisibility(inputId, buttonId, label) {
+            const input = el(inputId);
+            const button = el(buttonId);
+            const showPassword = input.type === 'password';
+            input.type = showPassword ? 'text' : 'password';
+            button.textContent = showPassword ? 'Hide' : 'Show';
+            button.setAttribute('aria-label', (showPassword ? 'Hide ' : 'Show ') + label);
+            button.setAttribute('aria-pressed', String(showPassword));
+        }
+
+        function logout() {
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            clearPrivateState();
+            showAuthModal();
+        }
+
         function toast(message, error) {
             const node = el('toast');
             window.clearTimeout(toastTimeout);
@@ -921,8 +1527,37 @@
             toastTimeout = window.setTimeout(() => node.classList.remove('visible'), 3800);
         }
 
+        async function refreshMarketDataStatus() {
+            try {
+                const status = await apiRequest('/api/market-data/status');
+                const provider = status && status.provider
+                    ? String(status.provider).toUpperCase()
+                    : null;
+                if (provider && provider !== activeMarketProvider) {
+                    resetMarketDataSession(provider);
+                }
+                const isFinnhub = status && status.provider === 'FINNHUB' && status.connected;
+                const badge = el('marketProviderBadge');
+                badge.textContent = isFinnhub ? 'LIVE: FINNHUB' : 'SIMULATED';
+                badge.classList.toggle('simulated', !isFinnhub);
+                badge.title = isFinnhub
+                    ? 'Live market data from Finnhub'
+                    : 'Simulated market data is active';
+            } catch (error) {
+                console.error('Could not load market data provider status:', error);
+                el('marketProviderBadge').textContent = 'STATUS UNAVAILABLE';
+                el('marketProviderBadge').classList.add('simulated');
+                el('marketProviderBadge').title = 'Could not verify the active market data provider';
+            }
+        }
+
         async function apiRequest(url, options) {
-            const response = await fetch(url, options);
+            const requestOptions = options || {};
+            const headers = new Headers(requestOptions.headers || {});
+            if (authToken && !url.startsWith('/api/auth/login') && !url.startsWith('/api/auth/register')) {
+                headers.set('Authorization', 'Bearer ' + authToken);
+            }
+            const response = await fetch(url, { ...requestOptions, headers });
             const text = await response.text();
             let payload = null;
             if (text) {
@@ -938,13 +1573,19 @@
             if (!response.ok) {
                 console.error((options && options.method || 'GET') + ' ' + url + ' failed: '
                     + response.status + ' ' + response.statusText + '; response body:', text);
-                throw new Error((payload && payload.error) || text || response.statusText || 'Request failed.');
+                if (response.status === 401 && authToken
+                    && !url.startsWith('/api/auth/login') && !url.startsWith('/api/auth/register')) {
+                    handleUnauthorized();
+                }
+                throw new Error((payload && (payload.error || payload.detail))
+                    || text || response.statusText || 'Request failed.');
             }
             return payload;
         }
 
         async function refreshWallet() {
-            const url = '/api/wallet/' + encodeURIComponent(USER_ID);
+            if (!currentUser) return;
+            const url = '/api/wallet/' + encodeURIComponent(currentUser.id);
             const wallet = await apiRequest(url);
             if (!wallet || wallet.availableBalance == null) {
                 throw new Error('Wallet response is missing availableBalance.');
@@ -1063,8 +1704,7 @@
             button.disabled = true;
             let result;
             try {
-                result = await apiRequest('/api/orders/' + encodeURIComponent(order.id)
-                    + '?userId=' + encodeURIComponent(USER_ID), { method: 'DELETE' });
+                result = await apiRequest('/api/orders/' + encodeURIComponent(order.id), { method: 'DELETE' });
                 if (!result || !result.order || !result.wallet
                     || result.order.status !== 'CANCELLED') {
                     throw new Error('The server returned an invalid cancellation response.');
@@ -1190,7 +1830,8 @@
         }
 
         async function refreshOrders() {
-            const url = '/api/orders/' + encodeURIComponent(USER_ID);
+            if (!currentUser) return;
+            const url = '/api/orders/' + encodeURIComponent(currentUser.id);
             const orders = await apiRequest(url);
             if (!Array.isArray(orders)) {
                 throw new Error('Order history response is not a list.');
@@ -1208,7 +1849,8 @@
         }
 
         async function fetchHoldings() {
-            const url = '/api/holdings/' + encodeURIComponent(USER_ID);
+            if (!currentUser) return;
+            const url = '/api/holdings/' + encodeURIComponent(currentUser.id);
             const result = await apiRequest(url);
             if (!Array.isArray(result)) {
                 throw new Error('Holdings response is not a list.');
@@ -1221,6 +1863,10 @@
             event.preventDefault();
             const price = Number(el('orderPrice').value);
             const quantity = Number(el('orderQuantity').value);
+            if (!currentUser) {
+                showAuthModal();
+                return;
+            }
             if (!Number.isFinite(price) || price <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
                 toast('Enter a valid price and whole-share quantity.', true);
                 return;
@@ -1237,7 +1883,6 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        userId: USER_ID,
                         symbol: selectedSymbol,
                         side: orderSide,
                         orderType,
@@ -1337,7 +1982,7 @@
             orderTopicSubscription = null;
             watchlistTickSubscriptions.clear();
             syncTickSubscriptions();
-            orderTopicSubscription = stompClient.subscribe('/topic/orders/' + USER_ID, response => {
+            orderTopicSubscription = stompClient.subscribe('/topic/orders/' + currentUser.id, response => {
                 try {
                     const order = JSON.parse(response.body);
                     if (order.status === 'FILLED') {
@@ -1363,14 +2008,22 @@
                 el('marketLiveDot').style.background = '#f0b858';
                 return;
             }
+            if (!authToken || !currentUser || (stompClient && stompClient.connected)) return;
             const socket = new SockJS('/ws-market');
-            stompClient = Stomp.over(socket);
-            stompClient.debug = null;
-            stompClient.reconnect_delay = 5000;
-            stompClient.connect({}, () => {
+            marketSocket = socket;
+            const client = Stomp.over(socket);
+            stompClient = client;
+            client.debug = null;
+            client.reconnect_delay = 5000;
+            client.connect({ Authorization: 'Bearer ' + authToken }, () => {
+                if (!authToken || !currentUser || stompClient !== client) {
+                    client.disconnect(() => {});
+                    return;
+                }
                 el('marketLiveText').textContent = 'Live market';
                 resetSubscriptionsAfterReconnect();
             }, error => {
+                if (stompClient !== client) return;
                 el('marketLiveText').textContent = 'Reconnecting';
                 el('marketLiveDot').style.background = '#f0b858';
                 console.error('STOMP connection failed:', error);
@@ -1440,33 +2093,37 @@
         document.querySelectorAll('.activity-tab').forEach(button => {
             button.addEventListener('click', () => setActivityView(button.dataset.view));
         });
+        el('watchSearch').addEventListener('input', event => {
+            watchlistQuery = event.target.value;
+            el('watchSearchClear').hidden = !watchlistQuery;
+            renderWatchlist();
+        });
+        el('watchSearchClear').addEventListener('click', () => {
+            el('watchSearch').value = '';
+            watchlistQuery = '';
+            el('watchSearchClear').hidden = true;
+            renderWatchlist();
+            el('watchSearch').focus();
+        });
         el('orderForm').addEventListener('submit', placeOrder);
+        el('loginMode').addEventListener('click', () => setAuthMode(false));
+        el('registerMode').addEventListener('click', () => setAuthMode(true));
+        el('authForm').addEventListener('submit', submitAuth);
+        el('authPasswordVisibility').addEventListener('click', () =>
+            togglePasswordVisibility('authPassword', 'authPasswordVisibility', 'password'));
+        el('authConfirmVisibility').addEventListener('click', () =>
+            togglePasswordVisibility('authConfirmPassword', 'authConfirmVisibility', 'confirmation password'));
+        el('logoutButton').addEventListener('click', logout);
 
         initializeDepthRows();
         renderDepth(null);
         renderWatchlist();
         updateInstrumentHeader();
         el('orderPrice').value = instruments.AAPL.price.toFixed(2);
-        seedChart(instruments.AAPL.price);
-        refreshWallet().catch(error => {
-            el('walletAvailable').textContent = 'Unavailable';
-            el('padAvailable').textContent = 'Unavailable';
-            console.error('Wallet request failed:', error);
-            toast('Wallet unavailable: ' + error.message, true);
-        });
-        refreshOrders().catch(error => {
-            console.error('GET /api/orders/' + encodeURIComponent(USER_ID) + ' failed:', error);
-            showEmptyState('Could not load orders: ' + error.message);
-            el('activityMeta').textContent = 'Order history unavailable';
-        });
-        fetchHoldings().catch(error => {
-            console.error('GET /api/holdings/' + encodeURIComponent(USER_ID) + ' failed:', error);
-            if (activeView === 'holdings') {
-                showEmptyState('Could not load holdings: ' + error.message);
-                el('activityMeta').textContent = 'Holdings unavailable';
-            }
-        });
-        connectMarketFeed();
+        loadHistoricalCandles(selectedSymbol);
+        refreshMarketDataStatus();
+        window.setInterval(refreshMarketDataStatus, 5000);
+        restoreSession();
     })();
 </script>
 </body>

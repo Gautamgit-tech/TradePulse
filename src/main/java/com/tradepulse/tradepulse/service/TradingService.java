@@ -31,7 +31,7 @@ import java.util.UUID;
 public class TradingService {
 
     private static final String DEFAULT_CURRENCY = "INR";
-    private static final BigDecimal DEMO_BALANCE = new BigDecimal("100000.00");
+    private static final BigDecimal INITIAL_BALANCE = new BigDecimal("100000.00");
 
     private final WalletRepository walletRepository;
     private final OrderRepository orderRepository;
@@ -168,7 +168,7 @@ public class TradingService {
     private Wallet createDefaultWallet(String userId) {
         try {
             Wallet wallet = walletRepository.save(new Wallet(
-                    userId, DEFAULT_CURRENCY, DEMO_BALANCE, BigDecimal.ZERO));
+                    userId, DEFAULT_CURRENCY, INITIAL_BALANCE, BigDecimal.ZERO));
             return Objects.requireNonNull(wallet, "Wallet repository returned no saved wallet.");
         } catch (DuplicateKeyException duplicateKeyException) {
             return walletRepository.findByUserIdAndCurrency(userId, DEFAULT_CURRENCY)
