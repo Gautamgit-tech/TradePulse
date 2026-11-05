@@ -17,8 +17,7 @@ COPY --from=builder --chown=tradepulse:tradepulse /workspace/target/tradepulse-*
 
 USER tradepulse
 
-# Render injects PORT dynamically; fallback to 8081 for local docker run
 ENV PORT=8081
 EXPOSE ${PORT}
 
-ENTRYPOINT ["sh", "-c", "java -XX:+UseG1GC -Xms256m -Xmx512m -Dserver.port=${PORT} -jar /app/tradepulse.jar"]
+ENTRYPOINT ["sh", "-c", "java -XX:+UseSerialGC -Xms128m -Xmx320m -Dserver.port=${PORT} -Dspring.data.mongodb.uri=${SPRING_DATA_MONGODB_URI} -jar /app/tradepulse.jar"]
