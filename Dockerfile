@@ -16,6 +16,9 @@ RUN addgroup -S tradepulse && adduser -S -G tradepulse tradepulse
 COPY --from=builder --chown=tradepulse:tradepulse /workspace/target/tradepulse-*.jar /app/tradepulse.jar
 
 USER tradepulse
-EXPOSE 8081
 
-ENTRYPOINT ["java", "-XX:+UseG1GC", "-Xms256m", "-Xmx512m", "-jar", "/app/tradepulse.jar"]
+# Render injects PORT dynamically; fallback to 8081 for local docker run
+ENV PORT=8081
+EXPOSE ${PORT}
+
+ENTRYPOINT ["sh", "-c", "java -XX:+UseG1GC -Xms256m -Xmx512m -Dserver.port=${PORT} -jar /app/tradepulse.jar"]
