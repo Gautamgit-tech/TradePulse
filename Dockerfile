@@ -20,4 +20,4 @@ USER tradepulse
 ENV PORT=8081
 EXPOSE ${PORT}
 
-ENTRYPOINT ["sh", "-c", "java -XX:+UseSerialGC -Xms128m -Xmx320m -Dserver.port=${PORT} -Dspring.data.mongodb.uri=${SPRING_DATA_MONGODB_URI} -jar /app/tradepulse.jar"]
+ENTRYPOINT ["sh", "-c", "java -XX:+UseSerialGC -Xms128m -Xmx320m -Dserver.port=${PORT} -Dspring.data.mongodb.uri=${SPRING_DATA_MONGODB_URI} -Dspring.mongodb.uri=${SPRING_DATA_MONGODB_URI} -jar /app/tradepulse.jar"]
